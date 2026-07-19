@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interpolation Search — Visual Trace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1E33;
+    --bg-grid:#14304F;
+    --panel:#0F2740;
+    --panel-2:#122C48;
+    --line:#1C3A5E;
+    --ink:#E8EEF5;
+    --ink-dim:#93A9C2;
+    --ink-faint:#5C7793;
+    --amber:#F2A93B;
+    --amber-dim:#4A3A1E;
+    --teal:#33C2A6;
+    --teal-dim:#173A34;
+    --rose:#E8546B;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px) 0 0/40px 40px,
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) 0 0/40px 40px,
+      var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+  }
+
+  .wrap{ max-width:1040px; margin:0 auto; padding:0 24px 80px; }
+
+  /* ---------- HERO ---------- */
+  .hero{ padding:64px 0 40px; border-bottom:1px solid var(--line); }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--amber); margin:0 0 14px;
+  }
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:clamp(32px,5vw,52px);
+    line-height:1.05; margin:0 0 18px; letter-spacing:-.01em;
+  }
+  .lede{ color:var(--ink-dim); font-size:17px; line-height:1.6; max-width:620px; margin:0 0 32px; }
+
+  .formula{
+    font-family:'JetBrains Mono', monospace;
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 26px; font-size:clamp(14px,2.4vw,19px); color:var(--ink);
+    overflow-x:auto; white-space:nowrap;
+  }
+  .formula .k{ color:var(--amber); }
+  .formula .v{ color:var(--teal); }
+  .formula-label{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-faint); letter-spacing:.1em; text-transform:uppercase; margin:10px 2px 0; }
+
+  /* ---------- SECTIONS ---------- */
+  section{ padding:44px 0; border-bottom:1px solid var(--line); }
+  section:last-child{ border-bottom:none; }
+  .section-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:22px; }
+  .section-num{ font-family:'JetBrains Mono',monospace; color:var(--ink-faint); font-size:13px; }
+  h2{ font-family:'Space Grotesk',sans-serif; font-size:22px; margin:0; font-weight:700; }
+  .section-sub{ color:var(--ink-dim); font-size:14.5px; margin:-14px 0 24px; max-width:600px; line-height:1.55; }
+
+  /* ---------- CONTROLS ---------- */
+  .controls{
+    display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:28px;
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px;
+  }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.08em; }
+  .field input{
+    background:var(--bg); border:1px solid var(--line); border-radius:6px; color:var(--ink);
+    padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:14px; width:110px;
+  }
+  .field input:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+  button{
+    font-family:'Space Grotesk',sans-serif; font-weight:500; font-size:14px;
+    border-radius:6px; padding:10px 16px; cursor:pointer; border:1px solid transparent;
+    transition:transform .12s ease, background .12s ease;
+  }
+  button:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+  button:active{ transform:scale(0.97); }
+  .btn-primary{ background:var(--amber); color:#20150A; border-color:var(--amber); }
+  .btn-primary:hover{ background:#f7bb5b; }
+  .btn-ghost{ background:transparent; color:var(--ink); border-color:var(--line); }
+  .btn-ghost:hover{ border-color:var(--ink-dim); }
+  .btn-teal{ background:var(--teal); color:#08221D; border-color:var(--teal); }
+  .btn-teal:hover{ background:#4fd8bc; }
+  button:disabled{ opacity:.35; cursor:not-allowed; }
+  .spacer{ flex:1 1 auto; }
+
+  /* ---------- NUMBER LINE (signature element) ---------- */
+  .line-panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:26px 20px 14px; margin-bottom:22px;
+  }
+  .line-caption{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-faint); margin-bottom:18px; letter-spacing:.03em;}
+  svg.numline{ width:100%; height:170px; display:block; overflow:visible; }
+  .tick-dot{ fill:var(--ink-faint); }
+  .tick-dot.in-range{ fill:var(--ink-dim); }
+  .tick-dot.checked{ fill:var(--ink); }
+  .tick-dot.target-match{ fill:var(--amber); }
+  .tick-label{ font-family:'JetBrains Mono',monospace; font-size:10px; fill:var(--ink-faint); }
+  .tick-label.checked{ fill:var(--ink); }
+  .range-bracket{ stroke:var(--ink-faint); stroke-width:1.5; }
+  .probe-line{ stroke:var(--amber); stroke-width:2; stroke-dasharray:3 3; }
+  .target-line{ stroke:var(--rose); stroke-width:1.5; stroke-dasharray:2 4; }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:18px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-dim); padding:10px 4px 0; }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .swatch{ width:9px; height:9px; border-radius:2px; display:inline-block; }
+
+  /* ---------- STAT ROW ---------- */
+  .stat-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:22px; }
+  .stat{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; }
+  .stat .label{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+  .stat .value{ font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; }
+  .stat.amber .value{ color:var(--amber); }
+  .stat.teal .value{ color:var(--teal); }
+  .stat.rose .value{ color:var(--rose); }
+
+  /* ---------- TRACE LOG ---------- */
+  .trace{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; max-height:260px; overflow-y:auto;
+  }
+  .trace-row{ display:grid; grid-template-columns:32px 1fr; gap:14px; padding:10px 16px; border-bottom:1px solid var(--line); }
+  .trace-row:last-child{ border-bottom:none; }
+  .trace-row .idx{ color:var(--ink-faint); }
+  .trace-row.current{ background:rgba(242,169,59,0.08); }
+  .trace-row .tag{ color:var(--amber); }
+  .trace-row .miss{ color:var(--rose); }
+  .trace-row .hit{ color:var(--teal); }
+  .trace-empty{ padding:22px 16px; color:var(--ink-faint); }
+
+  /* ---------- BENCHMARK ---------- */
+  .bench-table{ width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:13px; }
+  .bench-table th, .bench-table td{ text-align:right; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .bench-table th:first-child, .bench-table td:first-child{ text-align:left; }
+  .bench-table th{ color:var(--ink-faint); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+  .bench-table td.win{ color:var(--amber); }
+  .bench-bars{ display:flex; gap:2px; align-items:center; justify-content:flex-end; }
+  .bar{ height:8px; border-radius:2px; }
+  .bar.amber{ background:var(--amber); }
+  .bar.teal{ background:var(--teal); }
+
+  footer{ padding:36px 0 10px; color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  a{ color:var(--amber); }
+
+  @media (max-width:640px){
+    .controls{ flex-direction:column; align-items:stretch; }
+    .field input{ width:100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <p class="eyebrow">DAA · Searching Algorithms · Visual Trace</p>
+    <h1>Interpolation Search</h1>
+    <p class="lede">Binary search always checks the midpoint. Interpolation search guesses <em>where the target should be</em> — like flipping straight to "M" in a dictionary instead of opening in the middle. On uniformly distributed data that guess is usually right, cutting comparisons from O(log n) toward O(log log n).</p>
+    <div class="formula">
+      <span class="k">pos</span> = low + <span class="v">((target − arr[low]) × (high − low))</span> / <span class="v">(arr[high] − arr[low])</span>
+    </div>
+    <p class="formula-label">the probing formula — recomputed on every step</p>
+  </div>
+
+  <section>
+    <div class="section-head"><span class="section-num">01</span><h2>Build an array</h2></div>
+    <p class="section-sub">The number line below places every element by its <strong>value</strong>, not its index — that's the whole trick interpolation search exploits.</p>
+
+    <div class="controls">
+      <div class="field">
+        <label for="sizeInput">Elements</label>
+        <input id="sizeInput" type="number" min="4" max="40" value="14">
+      </div>
+      <div class="field">
+        <label for="targetInput">Target</label>
+        <input id="targetInput" type="number" value="">
+      </div>
+      <button class="btn-primary" id="genBtn">Generate array</button>
+      <div class="spacer"></div>
+      <button class="btn-ghost" id="stepBtn">Step ▸</button>
+      <button class="btn-teal" id="playBtn">Auto-play</button>
+      <button class="btn-ghost" id="resetBtn">Reset</button>
+    </div>
+
+    <div class="line-panel">
+      <p class="line-caption" id="lineCaption">Generate an array to begin.</p>
+      <svg class="numline" id="numline" viewBox="0 0 1000 170"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--ink-faint)"></span>unvisited</span>
+        <span><span class="swatch" style="background:var(--ink)"></span>checked</span>
+        <span><span class="swatch" style="background:var(--amber)"></span>match</span>
+        <span><span class="swatch" style="background:var(--rose)"></span>target value</span>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat amber"><div class="label">Probe position</div><div class="value" id="statPos">—</div></div>
+      <div class="stat"><div class="label">Low / High</div><div class="value" id="statRange">—</div></div>
+      <div class="stat"><div class="label">Comparisons</div><div class="value" id="statComp">0</div></div>
+      <div class="stat" id="statResultCard"><div class="label">Status</div><div class="value" id="statResult">idle</div></div>
+    </div>
+
+    <div class="trace" id="trace">
+      <div class="trace-empty">Step log will appear here once a search starts.</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">02</span><h2>Interpolation vs. Binary</h2></div>
+    <p class="section-sub">Same array, same target, both algorithms — run side by side to compare comparison counts.</p>
+    <div class="controls">
+      <button class="btn-primary" id="raceBtn">Run both to completion</button>
+      <div class="spacer"></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat amber"><div class="label">Interpolation comparisons</div><div class="value" id="raceIS">—</div></div>
+      <div class="stat teal"><div class="label">Binary comparisons</div><div class="value" id="raceBS">—</div></div>
+      <div class="stat" id="raceWinnerCard"><div class="label">Result</div><div class="value" id="raceWinner">—</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">03</span><h2>Benchmark across sizes</h2></div>
+    <p class="section-sub">Mirrors the Python <code>performance_analysis()</code> routine: for each array size, average the comparison count over repeated searches for a random uniformly-distributed sorted array.</p>
+    <div class="controls">
+      <button class="btn-primary" id="benchBtn">Run benchmark</button>
+      <div class="spacer"></div>
+      <span id="benchStatus" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-faint);"></span>
+    </div>
+    <table class="bench-table" id="benchTable">
+      <thead>
+        <tr><th>Size (n)</th><th>Interpolation</th><th>Binary</th><th>Comparison</th></tr>
+      </thead>
+      <tbody id="benchBody">
+        <tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:22px;">Run the benchmark to populate this table.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>
+    <span>Design &amp; Analysis of Algorithms — interpolation search demo</span>
+    <span>Avg case O(log log n) · Worst case O(n) · Space O(1)</span>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = id => document.getElementById(id);
+
+  let arr = [];
+  let target = null;
+  let steps = [];       // recorded interpolation-search steps for the stepper
+  let stepIdx = -1;
+  let playTimer = null;
+
+  // ---------- algorithms ----------
+  function interpolationSteps(a, t){
+    const trace = [];
+    let low = 0, high = a.length - 1, comparisons = 0;
+    while (low <= high && a[low] <= t && t <= a[high]){
+      comparisons++;
+      if (low === high){
+        trace.push({low, high, pos: low, comparisons, result: a[low] === t ? "hit" : "miss"});
+        break;
+      }
+      if (a[high] === a[low]){
+        trace.push({low, high, pos: low, comparisons, result: a[low] === t ? "hit" : "miss"});
+        break;
+      }
+      const pos = low + Math.floor(((t - a[low]) * (high - low)) / (a[high] - a[low]));
+      if (a[pos] === t){
+        trace.push({low, high, pos, comparisons, result: "hit"});
+        break;
+      } else if (a[pos] < t){
+        trace.push({low, high, pos, comparisons, result: "gt"});
+        low = pos + 1;
+      } else {
+        trace.push({low, high, pos, comparisons, result: "lt"});
+        high = pos - 1;
+      }
+    }
+    if (trace.length === 0 || trace[trace.length-1].result === "gt" || trace[trace.length-1].result === "lt"){
+      // ran out of range without an explicit hit/miss row appended
+      if (trace.length === 0 || (trace[trace.length-1].result !== "hit" && trace[trace.length-1].result !== "miss")){
+        trace.push({low, high, pos: -1, comparisons, result: "miss"});
+      }
+    }
+    return trace;
+  }
+
+  function binarySearchCount(a, t){
+    let low = 0, high = a.length - 1, comparisons = 0, idx = -1;
+    while (low <= high){
+      comparisons++;
+      const mid = Math.floor((low + high) / 2);
+      if (a[mid] === t){ idx = mid; break; }
+      else if (a[mid] < t) low = mid + 1;
+      else high = mid - 1;
+    }
+    return { idx, comparisons };
+  }
+
+  function interpolationSearchCount(a, t){
+    const tr = interpolationSteps(a, t);
+    const last = tr[tr.length - 1];
+    return { idx: last.result === "hit" ? last.pos : -1, comparisons: last.comparisons };
+  }
+
+  // ---------- array generation ----------
+  function generateArray(size){
+    const set = new Set();
+    const maxVal = size * 8;
+    while (set.size < size) set.add(Math.floor(Math.random() * maxVal) + 1);
+    return Array.from(set).sort((a,b) => a-b);
+  }
+
+  // ---------- number line rendering ----------
+  function renderLine(highlightLow, highlightHigh, probePos, checkedSet, matchPos){
+    const svg = $("numline");
+    svg.innerHTML = "";
+    if (arr.length === 0) return;
+    const W = 1000, H = 170, padX = 24, baseY = 100;
+    const min = arr[0], max = arr[arr.length-1];
+    const xOf = v => padX + ( (v - min) / Math.max(1,(max - min)) ) * (W - padX*2);
+
+    // axis
+    const axis = document.createElementNS(NS,"line");
+    axis.setAttribute("x1", padX); axis.setAttribute("x2", W-padX);
+    axis.setAttribute("y1", baseY); axis.setAttribute("y2", baseY);
+    axis.setAttribute("stroke","var(--line)"); axis.setAttribute("stroke-width","1.5");
+    svg.appendChild(axis);
+
+    // range bracket (low..high)
+    if (highlightLow != null && highlightHigh != null && highlightLow <= highlightHigh){
+      const x1 = xOf(arr[highlightLow]), x2 = xOf(arr[highlightHigh]);
+      const bracket = document.createElementNS(NS,"line");
+      bracket.setAttribute("x1", x1); bracket.setAttribute("x2", x2);
+      bracket.setAttribute("y1", baseY-28); bracket.setAttribute("y2", baseY-28);
+      bracket.setAttribute("class","range-bracket");
+      svg.appendChild(bracket);
+      [x1,x2].forEach(x=>{
+        const tickv = document.createElementNS(NS,"line");
+        tickv.setAttribute("x1",x); tickv.setAttribute("x2",x);
+        tickv.setAttribute("y1",baseY-32); tickv.setAttribute("y2",baseY-24);
+        tickv.setAttribute("class","range-bracket");
+        svg.appendChild(tickv);
+      });
+    }
+
+    // target guideline
+    if (target != null && target >= min && target <= max){
+      const tx = xOf(target);
+      const tl = document.createElementNS(NS,"line");
+      tl.setAttribute("x1",tx); tl.setAttribute("x2",tx);
+      tl.setAttribute("y1",20); tl.setAttribute("y2",baseY+40);
+      tl.setAttribute("class","target-line");
+      svg.appendChild(tl);
+      const tlab = document.createElementNS(NS,"text");
+      tlab.setAttribute("x",tx); tlab.setAttribute("y",14);
+      tlab.setAttribute("text-anchor","middle");
+      tlab.setAttribute("class","tick-label"); tlab.setAttribute("fill","var(--rose)");
+      tlab.textContent = "target " + target;
+      svg.appendChild(tlab);
+    }
+
+    // probe guideline
+    if (probePos != null && probePos >= 0){
+      const px = xOf(arr[probePos]);
+      const pl = document.createElementNS(NS,"line");
+      pl.setAttribute("x1",px); pl.setAttribute("x2",px);
+      pl.setAttribute("y1",baseY-40); pl.setAttribute("y2",baseY+40);
+      pl.setAttribute("class","probe-line");
+      svg.appendChild(pl);
+    }
+
+    // dots + labels
+    arr.forEach((v, i) => {
+      const x = xOf(v);
+      const inRange = highlightLow != null && i >= highlightLow && i <= highlightHigh;
+      const isChecked = checkedSet && checkedSet.has(i);
+      const isMatch = matchPos === i;
+      const dot = document.createElementNS(NS,"circle");
+      dot.setAttribute("cx", x); dot.setAttribute("cy", baseY);
+      dot.setAttribute("r", isMatch ? 7 : (i===probePos ? 6 : 4));
+      dot.setAttribute("class", "tick-dot" + (isMatch ? " target-match" : isChecked ? " checked" : inRange ? " in-range" : ""));
+      svg.appendChild(dot);
+
+      const lab = document.createElementNS(NS,"text");
+      lab.setAttribute("x", x); lab.setAttribute("y", baseY + (i % 2 === 0 ? 22 : 38));
+      lab.setAttribute("text-anchor","middle");
+      lab.setAttribute("class","tick-label" + (isChecked || isMatch ? " checked" : ""));
+      lab.textContent = v;
+      svg.appendChild(lab);
+    });
+  }
+
+  // ---------- stepper UI ----------
+  function resetStepper(){
+    stepIdx = -1;
+    stopPlay();
+    $("statPos").textContent = "—";
+    $("statRange").textContent = "—";
+    $("statComp").textContent = "0";
+    $("statResult").textContent = "idle";
+    $("trace").innerHTML = '<div class="trace-empty">Step through with "Step ▸" or hit "Auto-play".</div>';
+    renderLine(0, arr.length-1, null, new Set(), null);
+    $("stepBtn").disabled = arr.length === 0;
+    $("playBtn").disabled = arr.length === 0;
+  }
+
+  function applyStep(){
+    if (stepIdx < 0 || stepIdx >= steps.length) return;
+    const checked = new Set();
+    for (let i=0;i<=stepIdx;i++) checked.add(steps[i].pos);
+    const s = steps[stepIdx];
+    renderLine(s.low, s.high, s.pos, checked, s.result === "hit" ? s.pos : null);
+    $("statPos").textContent = s.pos >= 0 ? s.pos + " (val " + arr[s.pos] + ")" : "—";
+    $("statRange").textContent = s.low + " / " + s.high;
+    $("statComp").textContent = s.comparisons;
+    $("statResult").textContent =
+      s.result === "hit" ? "found ✓" :
+      s.result === "miss" ? "not found" :
+      s.result === "gt" ? "probe < target → search right" : "probe > target → search left";
+
+    const traceEl = $("trace");
+    if (stepIdx === 0) traceEl.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "trace-row current";
+    row.innerHTML = `<span class="idx">#${stepIdx+1}</span><span>low=<span class="tag">${s.low}</span> high=<span class="tag">${s.high}</span> → pos=<span class="tag">${s.pos}</span> (arr[pos]=${s.pos>=0?arr[s.pos]:'—'}) — ${
+        s.result === "hit" ? '<span class="hit">match, target found</span>' :
+        s.result === "miss" ? '<span class="miss">range exhausted, not found</span>' :
+        s.result === "gt" ? "arr[pos] &lt; target → low = pos+1" : "arr[pos] &gt; target → high = pos-1"
+      }</span>`;
+    Array.from(traceEl.children).forEach(c => c.classList.remove("current"));
+    traceEl.appendChild(row);
+    traceEl.scrollTop = traceEl.scrollHeight;
+  }
+
+  function stepForward(){
+    if (steps.length === 0) return;
+    if (stepIdx < steps.length - 1){
+      stepIdx++;
+      applyStep();
+    }
+    if (stepIdx >= steps.length - 1) stopPlay();
+  }
+
+  function stopPlay(){
+    if (playTimer){ clearInterval(playTimer); playTimer = null; }
+    $("playBtn").textContent = "Auto-play";
+  }
+
+  // ---------- events ----------
+  $("genBtn").addEventListener("click", () => {
+    let size = parseInt($("sizeInput").value, 10);
+    if (!size || size < 4) size = 4;
+    if (size > 40) size = 40;
+    $("sizeInput").value = size;
+    arr = generateArray(size);
+    const preset = arr[Math.floor(Math.random()*arr.length)];
+    $("targetInput").value = preset;
+    target = preset;
+    steps = interpolationSteps(arr, target);
+    $("lineCaption").textContent = `n = ${arr.length} · range [${arr[0]}, ${arr[arr.length-1]}] · searching for ${target}`;
+    resetStepper();
+  });
+
+  $("targetInput").addEventListener("change", () => {
+    if (arr.length === 0) return;
+    target = parseInt($("targetInput").value, 10);
+    if (isNaN(target)) return;
+    steps = interpolationSteps(arr, target);
+    $("lineCaption").textContent = `n = ${arr.length} · range [${arr[0]}, ${arr[arr.length-1]}] · searching for ${target}`;
+    resetStepper();
+  });
+
+  $("stepBtn").addEventListener("click", stepForward);
+
+  $("playBtn").addEventListener("click", () => {
+    if (playTimer){ stopPlay(); return; }
+    if (steps.length === 0) return;
+    $("playBtn").textContent = "Pause";
+    playTimer = setInterval(() => {
+      stepForward();
+      if (stepIdx >= steps.length - 1) stopPlay();
+    }, 850);
+  });
+
+  $("resetBtn").addEventListener("click", resetStepper);
+
+  $("raceBtn").addEventListener("click", () => {
+    if (arr.length === 0){ alert("Generate an array first."); return; }
+    const is = interpolationSearchCount(arr, target);
+    const bs = binarySearchCount(arr, target);
+    $("raceIS").textContent = is.comparisons;
+    $("raceBS").textContent = bs.comparisons;
+    const winner = is.comparisons < bs.comparisons ? "Interpolation" : is.comparisons > bs.comparisons ? "Binary" : "Tie";
+    $("raceWinner").textContent = winner;
+  });
+
+  $("benchBtn").addEventListener("click", async () => {
+    const sizes = [1000, 5000, 10000, 50000, 100000];
+    const status = $("benchStatus");
+    const body = $("benchBody");
+    body.innerHTML = "";
+    for (const size of sizes){
+      status.textContent = `running n=${size}…`;
+      await new Promise(r => setTimeout(r, 0)); // let UI paint
+      const a = generateArray(size);
+      const t = a[Math.floor(Math.random()*a.length)];
+      const is = interpolationSearchCount(a, t);
+      const bs = binarySearchCount(a, t);
+      const maxC = Math.max(is.comparisons, bs.comparisons, 1);
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${size.toLocaleString()}</td>
+        <td class="${is.comparisons <= bs.comparisons ? 'win' : ''}">${is.comparisons}
+          <div class="bench-bars"><div class="bar amber" style="width:${(is.comparisons/maxC*60).toFixed(0)}px"></div></div>
+        </td>
+        <td>${bs.comparisons}
+          <div class="bench-bars"><div class="bar teal" style="width:${(bs.comparisons/maxC*60).toFixed(0)}px"></div></div>
+        </td>
+        <td>${is.comparisons < bs.comparisons ? "interpolation faster" : is.comparisons > bs.comparisons ? "binary faster" : "tie"}</td>`;
+      body.appendChild(row);
+    }
+    status.textContent = "done";
+  });
+
+  // initial state
+  $("stepBtn").disabled = true;
+  $("playBtn").disabled = true;
+})();
+</script>
+</body>
+</html>
