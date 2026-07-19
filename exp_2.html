@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String Matching — Naive vs KMP vs Rabin-Karp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1E33; --bg-grid:#14304F; --panel:#0F2740; --line:#1C3A5E;
+    --ink:#E8EEF5; --ink-dim:#93A9C2; --ink-faint:#5C7793;
+    --amber:#F2A93B; --teal:#33C2A6; --rose:#E8546B; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px) 0 0/40px 40px,
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) 0 0/40px 40px,
+      var(--bg);
+    color:var(--ink); font-family:'IBM Plex Sans', sans-serif; -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; } }
+  .wrap{ max-width:1040px; margin:0 auto; padding:0 24px 80px; }
+
+  .hero{ padding:64px 0 40px; border-bottom:1px solid var(--line); }
+  .eyebrow{ font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--amber); margin:0 0 14px; }
+  h1{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:clamp(30px,5vw,48px); line-height:1.05; margin:0 0 18px; letter-spacing:-.01em; }
+  .lede{ color:var(--ink-dim); font-size:16.5px; line-height:1.6; max-width:640px; margin:0 0 8px; }
+  .back-link{ font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--ink-faint); text-decoration:none; }
+  .back-link:hover{ color:var(--amber); }
+
+  section{ padding:44px 0; border-bottom:1px solid var(--line); }
+  section:last-child{ border-bottom:none; }
+  .section-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:8px; }
+  .section-num{ font-family:'JetBrains Mono',monospace; color:var(--ink-faint); font-size:13px; }
+  h2{ font-family:'Space Grotesk',sans-serif; font-size:22px; margin:0; font-weight:700; }
+  .section-sub{ color:var(--ink-dim); font-size:14.5px; margin:6px 0 24px; max-width:640px; line-height:1.55; }
+
+  /* tabs */
+  .tabs{ display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+  .tab{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:.03em;
+    background:var(--panel); border:1px solid var(--line); color:var(--ink-dim);
+    padding:9px 14px; border-radius:7px; cursor:pointer;
+  }
+  .tab.active{ border-color:var(--amber); color:var(--amber); }
+  .tab .cx{ color:var(--ink-faint); font-size:10.5px; display:block; margin-top:2px; }
+  .tab.active .cx{ color:var(--amber); opacity:.7; }
+
+  .controls{ display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:20px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px; }
+  .field{ display:flex; flex-direction:column; gap:6px; flex:1 1 160px; min-width:140px; }
+  .field label{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.08em; }
+  .field input{ background:var(--bg); border:1px solid var(--line); border-radius:6px; color:var(--ink); padding:9px 10px; font-family:'JetBrains Mono',monospace; font-size:14px; width:100%; }
+  .field input:focus{ outline:2px solid var(--amber); outline-offset:1px; }
+  button{ font-family:'Space Grotesk',sans-serif; font-weight:500; font-size:14px; border-radius:6px; padding:10px 16px; cursor:pointer; border:1px solid transparent; transition:transform .12s ease, background .12s ease; white-space:nowrap; }
+  button:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+  button:active{ transform:scale(0.97); }
+  .btn-primary{ background:var(--amber); color:#20150A; border-color:var(--amber); }
+  .btn-primary:hover{ background:#f7bb5b; }
+  .btn-ghost{ background:transparent; color:var(--ink); border-color:var(--line); }
+  .btn-ghost:hover{ border-color:var(--ink-dim); }
+  .btn-teal{ background:var(--teal); color:#08221D; border-color:var(--teal); }
+  .btn-teal:hover{ background:#4fd8bc; }
+  button:disabled{ opacity:.35; cursor:not-allowed; }
+  .spacer{ flex:1 1 auto; }
+
+  /* alignment visualization */
+  .align-panel{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:22px 20px; margin-bottom:20px; overflow-x:auto; }
+  .align-caption{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-faint); margin-bottom:18px; }
+  .row{ display:flex; gap:4px; margin-bottom:6px; min-width:max-content; }
+  .row .idx{ width:28px; flex:0 0 28px; }
+  .cell{
+    width:28px; height:28px; flex:0 0 28px; display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono',monospace; font-size:13px; border-radius:5px; border:1px solid var(--line);
+    background:var(--bg); color:var(--ink-dim);
+  }
+  .cell.blank{ border:1px dashed var(--line); background:transparent; color:transparent; }
+  .cell.current{ border-color:var(--amber); color:var(--amber); box-shadow:0 0 0 2px rgba(242,169,59,.25) inset; }
+  .cell.match{ border-color:var(--teal); background:var(--teal); color:#08221D; }
+  .cell.mismatch{ border-color:var(--rose); background:var(--rose); color:#2A0A10; }
+  .cell.found{ border-color:var(--teal); box-shadow:0 0 0 2px rgba(51,194,166,.3) inset; }
+  .row-label{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-faint); width:52px; flex:0 0 52px; display:flex; align-items:center; }
+
+  .lps-table, .hash-panel{ margin-top:18px; padding-top:18px; border-top:1px dashed var(--line); }
+  .lps-table .row .cell{ background:var(--bg); }
+  .hash-eq{ font-family:'JetBrains Mono',monospace; font-size:14px; background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:12px 16px; display:inline-block; }
+  .hash-eq .eq{ color:var(--amber); } .hash-eq .neq{ color:var(--rose); }
+
+  .stat-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+  .stat{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; }
+  .stat .label{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+  .stat .value{ font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; }
+  .stat.amber .value{ color:var(--amber); } .stat.teal .value{ color:var(--teal); }
+
+  .trace{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); font-family:'JetBrains Mono',monospace; font-size:12.5px; max-height:220px; overflow-y:auto; }
+  .trace-row{ padding:9px 16px; border-bottom:1px solid var(--line); }
+  .trace-row:last-child{ border-bottom:none; }
+  .trace-row.current{ background:rgba(242,169,59,0.08); }
+  .trace-row .hit{ color:var(--teal); } .trace-row .miss{ color:var(--rose); } .trace-row .tag{ color:var(--amber); }
+  .trace-empty{ padding:22px 16px; color:var(--ink-faint); }
+
+  .bench-table{ width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:13px; }
+  .bench-table th, .bench-table td{ text-align:right; padding:10px 12px; border-bottom:1px solid var(--line); }
+  .bench-table th:first-child, .bench-table td:first-child{ text-align:left; }
+  .bench-table th{ color:var(--ink-faint); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+  .bench-table td.win{ color:var(--amber); }
+
+  footer{ padding:36px 0 10px; color:var(--ink-faint); font-family:'JetBrains Mono',monospace; font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+  @media (max-width:640px){ .controls{ flex-direction:column; align-items:stretch; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <a class="back-link" href="../">← all experiments</a>
+    <p class="eyebrow" style="margin-top:14px;">DAA · Pattern Matching · Experiment 2</p>
+    <h1>String Matching</h1>
+    <p class="lede">Three ways to find a pattern inside text. <strong>Naive</strong> brute-forces every alignment. <strong>KMP</strong> remembers the pattern's own structure so it never re-checks a character it already matched. <strong>Rabin-Karp</strong> hashes the pattern and slides a rolling hash across the text, only comparing characters when hashes collide.</p>
+  </div>
+
+  <section>
+    <div class="section-head"><span class="section-num">01</span><h2>Step through an algorithm</h2></div>
+    <p class="section-sub">Pick an algorithm, set the text and pattern, then step through character-by-character comparisons.</p>
+
+    <div class="tabs">
+      <button class="tab active" data-algo="naive">Naive<span class="cx">O(n·m)</span></button>
+      <button class="tab" data-algo="kmp">KMP<span class="cx">O(n + m)</span></button>
+      <button class="tab" data-algo="rk">Rabin-Karp<span class="cx">O(n + m) avg</span></button>
+    </div>
+
+    <div class="controls">
+      <div class="field"><label for="textInput">Text</label><input id="textInput" type="text" value="AABAACAADAABAABA" maxlength="40"></div>
+      <div class="field"><label for="patternInput">Pattern</label><input id="patternInput" type="text" value="AABA" maxlength="12"></div>
+      <button class="btn-primary" id="loadBtn">Load</button>
+      <div class="spacer"></div>
+      <button class="btn-ghost" id="stepBtn">Step ▸</button>
+      <button class="btn-teal" id="playBtn">Auto-play</button>
+      <button class="btn-ghost" id="resetBtn">Reset</button>
+    </div>
+
+    <div class="align-panel">
+      <p class="align-caption" id="alignCaption">Click "Load" to begin.</p>
+      <div id="textRow"></div>
+      <div id="patternRow"></div>
+      <div class="lps-table" id="lpsPanel" style="display:none;">
+        <p class="align-caption">LPS (longest proper prefix-suffix) table — tells KMP how far to fall back on a mismatch, no re-scanning.</p>
+        <div id="lpsRow"></div>
+      </div>
+      <div class="hash-panel" id="hashPanel" style="display:none;">
+        <p class="align-caption">Rolling hash — characters are only compared when the window's hash matches the pattern's hash.</p>
+        <div class="hash-eq" id="hashEq">pattern hash = — · window hash = —</div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat amber"><div class="label">Comparisons so far</div><div class="value" id="statComp">0</div></div>
+      <div class="stat"><div class="label">Position</div><div class="value" id="statPos">—</div></div>
+      <div class="stat teal"><div class="label">Matches found</div><div class="value" id="statMatches">0</div></div>
+    </div>
+
+    <div class="trace" id="trace"><div class="trace-empty">Step log will appear here once loaded.</div></div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">02</span><h2>Head-to-head</h2></div>
+    <p class="section-sub">Run all three algorithms on the current text/pattern and compare total comparison counts.</p>
+    <div class="controls"><button class="btn-primary" id="raceBtn">Compare all three</button><div class="spacer"></div></div>
+    <div class="stat-row">
+      <div class="stat amber"><div class="label">Naive</div><div class="value" id="raceNaive">—</div></div>
+      <div class="stat teal"><div class="label">KMP</div><div class="value" id="raceKmp">—</div></div>
+      <div class="stat"><div class="label">Rabin-Karp</div><div class="value" id="raceRk">—</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><span class="section-num">03</span><h2>Benchmark across patterns</h2></div>
+    <p class="section-sub">Mirrors the Python benchmark: a random 10,000-character text over the alphabet {A,B,C,D}, tested against patterns of increasing length.</p>
+    <div class="controls"><button class="btn-primary" id="benchBtn">Run benchmark</button><div class="spacer"></div><span id="benchStatus" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-faint);"></span></div>
+    <table class="bench-table">
+      <thead><tr><th>Pattern</th><th>Naive</th><th>KMP</th><th>Rabin-Karp</th></tr></thead>
+      <tbody id="benchBody"><tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:22px;">Run the benchmark to populate this table.</td></tr></tbody>
+    </table>
+  </section>
+
+  <footer>
+    <span>DAA Lab — String Matching</span>
+    <span>Naive O(n·m) · KMP O(n+m) · Rabin-Karp O(n+m) average, O(n·m) worst case</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  let text = "", pattern = "";
+  let algo = "naive";
+  let steps = [], lps = [];
+  let stepIdx = -1, playTimer = null;
+
+  function computeLPS(p){
+    const m = p.length, lpsArr = new Array(m).fill(0);
+    let len = 0, i = 1;
+    while (i < m){
+      if (p[i] === p[len]){ len++; lpsArr[i] = len; i++; }
+      else if (len !== 0){ len = lpsArr[len-1]; }
+      else { lpsArr[i] = 0; i++; }
+    }
+    return lpsArr;
+  }
+
+  function naiveSteps(t, p){
+    const n=t.length, m=p.length, out=[]; let comparisons=0, matches=0;
+    for (let i=0; i<=n-m; i++){
+      let j=0, broke=false;
+      while (j<m){
+        comparisons++;
+        const isMatch = t[i+j]===p[j];
+        out.push({i, j, textIdx:i+j, comparisons, result:isMatch?"cmp-match":"cmp-mismatch", matches});
+        if (!isMatch){ broke=true; break; }
+        j++;
+      }
+      if (!broke && j===m){ matches++; out.push({i, j:m, textIdx:i+m-1, comparisons, result:"found", window:[i,i+m-1], matches}); }
+    }
+    return out;
+  }
+
+  function kmpSteps(t, p){
+    const n=t.length, m=p.length, lpsArr = computeLPS(p), out=[];
+    let i=0, j=0, comparisons=0, matches=0;
+    while (i<n){
+      comparisons++;
+      const isMatch = p[j]===t[i];
+      out.push({i, j, textIdx:i, comparisons, result:isMatch?"cmp-match":"cmp-mismatch", matches});
+      if (isMatch){ i++; j++; }
+      if (j===m){
+        matches++;
+        out.push({i, j:m, textIdx:i-1, comparisons, result:"found", window:[i-m,i-1], matches});
+        j = lpsArr[j-1];
+      } else if (i<n && p[j]!==t[i]){
+        if (j!==0){ j = lpsArr[j-1]; out.push({i, j, comparisons, result:"fallback", matches}); }
+        else i++;
+      }
+    }
+    return {steps: out, lps: lpsArr};
+  }
+
+  function rabinKarpSteps(t, p, q=101){
+    const n=t.length, m=p.length, d=256, out=[];
+    let h=1; for (let x=0;x<m-1;x++) h=(h*d)%q;
+    let pHash=0, tHash=0;
+    for (let x=0;x<m;x++){ pHash=(d*pHash+p.charCodeAt(x))%q; tHash=(d*tHash+t.charCodeAt(x))%q; }
+    let comparisons=0, matches=0;
+    for (let s=0; s<=n-m; s++){
+      if (pHash===tHash){
+        let k=0, broke=false;
+        for (k=0; k<m; k++){
+          comparisons++;
+          const isMatch = t[s+k]===p[k];
+          out.push({i:s, j:k, textIdx:s+k, comparisons, result:isMatch?"cmp-match":"cmp-mismatch", pHash, tHash, matches});
+          if (!isMatch){ broke=true; break; }
+        }
+        if (!broke){ matches++; out.push({i:s, j:m, comparisons, result:"found", window:[s,s+m-1], pHash, tHash, matches}); }
+      } else {
+        out.push({i:s, j:-1, comparisons, result:"hash-skip", pHash, tHash, matches});
+      }
+      if (s < n-m){
+        tHash = (d*(tHash - t.charCodeAt(s)*h) + t.charCodeAt(s+m)) % q;
+        if (tHash < 0) tHash += q;
+      }
+    }
+    return out;
+  }
+
+  function countersOnly(t, p){
+    return {
+      naive: naiveSteps(t,p).slice(-1)[0]?.comparisons || 0,
+      kmp: kmpSteps(t,p).steps.slice(-1)[0]?.comparisons || 0,
+      rk: rabinKarpSteps(t,p).slice(-1)[0]?.comparisons || 0
+    };
+  }
+
+  // ---------- rendering ----------
+  function renderRows(offset, currentJ, cellStates, foundWindows){
+    const textRow = $("textRow"), patRow = $("patternRow");
+    textRow.innerHTML = ""; patRow.innerHTML = "";
+
+    const idxRow = document.createElement("div"); idxRow.className="row";
+    const lbl0 = document.createElement("div"); lbl0.className="row-label"; lbl0.textContent="idx"; idxRow.appendChild(lbl0);
+    for (let k=0;k<text.length;k++){ const c=document.createElement("div"); c.className="cell"; c.style.color="var(--ink-faint)"; c.style.background="transparent"; c.style.border="none"; c.textContent=k; idxRow.appendChild(c); }
+    textRow.appendChild(idxRow);
+
+    const tRow = document.createElement("div"); tRow.className="row";
+    const lblT = document.createElement("div"); lblT.className="row-label"; lblT.textContent="text"; tRow.appendChild(lblT);
+    for (let k=0;k<text.length;k++){
+      const c = document.createElement("div"); c.className="cell"; c.textContent=text[k];
+      const st = cellStates && cellStates[k];
+      if (st) c.classList.add(st);
+      if (foundWindows && foundWindows.some(w => k>=w[0] && k<=w[1])) c.classList.add("found");
+      tRow.appendChild(c);
+    }
+    textRow.appendChild(tRow);
+
+    const pRow = document.createElement("div"); pRow.className="row";
+    const lblP = document.createElement("div"); lblP.className="row-label"; lblP.textContent="pattern"; pRow.appendChild(lblP);
+    for (let k=0;k<text.length;k++){
+      const rel = k - offset;
+      const c = document.createElement("div");
+      if (rel>=0 && rel<pattern.length){
+        c.className="cell"; c.textContent=pattern[rel];
+        if (rel === currentJ) c.classList.add("current");
+      } else { c.className="cell blank"; c.textContent="·"; }
+      pRow.appendChild(c);
+    }
+    patRow.appendChild(pRow);
+  }
+
+  function renderLps(){
+    const row = $("lpsRow"); row.innerHTML = "";
+    const head = document.createElement("div"); head.className="row";
+    const lbl = document.createElement("div"); lbl.className="row-label"; lbl.textContent="pattern"; head.appendChild(lbl);
+    for (const ch of pattern){ const c=document.createElement("div"); c.className="cell"; c.textContent=ch; head.appendChild(c); }
+    row.appendChild(head);
+    const lpsRow = document.createElement("div"); lpsRow.className="row";
+    const lbl2 = document.createElement("div"); lbl2.className="row-label"; lbl2.textContent="lps"; lpsRow.appendChild(lbl2);
+    for (const v of lps){ const c=document.createElement("div"); c.className="cell"; c.textContent=v; lpsRow.appendChild(c); }
+    row.appendChild(lpsRow);
+  }
+
+  function resetStepper(){
+    stepIdx = -1; stopPlay();
+    $("statComp").textContent = "0"; $("statPos").textContent = "—"; $("statMatches").textContent = "0";
+    $("trace").innerHTML = '<div class="trace-empty">Step through with "Step ▸" or hit "Auto-play".</div>';
+    renderRows(0, -1, null, null);
+    $("stepBtn").disabled = steps.length === 0;
+    $("playBtn").disabled = steps.length === 0;
+  }
+
+  function applyStep(){
+    if (stepIdx < 0 || stepIdx >= steps.length) return;
+    const s = steps[stepIdx];
+    const cellStates = {};
+    let offset = s.i, currentJ = s.j;
+    const foundWindows = [];
+    for (let k=0; k<=stepIdx; k++){
+      const st = steps[k];
+      if (st.result === "found") foundWindows.push(st.window);
+    }
+    if (s.result === "cmp-match") cellStates[s.textIdx] = "match";
+    else if (s.result === "cmp-mismatch") cellStates[s.textIdx] = "mismatch";
+    else if (s.result === "found"){ offset = s.window[0]; currentJ = -1; }
+
+    renderRows(offset, currentJ, cellStates, foundWindows);
+    $("statComp").textContent = s.comparisons;
+    $("statPos").textContent = algo === "rk" ? "s=" + s.i : (algo === "kmp" ? "i=" + (s.i ?? "-") + " j=" + s.j : "i=" + s.i + " j=" + s.j);
+    $("statMatches").textContent = s.matches;
+
+    if (algo === "rk"){
+      const eq = $("hashEq");
+      const eqClass = s.pHash === s.tHash ? "eq" : "neq";
+      eq.innerHTML = `pattern hash = <span class="${eqClass}">${s.pHash}</span> · window hash = <span class="${eqClass}">${s.tHash}</span> ${s.pHash===s.tHash ? "→ hashes match, compare chars" : "→ different, skip window"}`;
+    }
+
+    const traceEl = $("trace");
+    if (stepIdx === 0) traceEl.innerHTML = "";
+    const row = document.createElement("div");
+    row.className = "trace-row current";
+    let msg;
+    if (s.result === "cmp-match") msg = `compare pos ${s.textIdx}: <span class="hit">match</span>`;
+    else if (s.result === "cmp-mismatch") msg = `compare pos ${s.textIdx}: <span class="miss">mismatch</span>`;
+    else if (s.result === "found") msg = `<span class="hit">pattern found</span> at index ${s.window[0]}`;
+    else if (s.result === "fallback") msg = `mismatch → KMP falls back using LPS, <span class="tag">j = ${s.j}</span> (no re-scan of text)`;
+    else if (s.result === "hash-skip") msg = `window hash ≠ pattern hash → <span class="tag">skip, no char comparisons</span>`;
+    else msg = s.result;
+    row.innerHTML = `<span style="color:var(--ink-faint)">#${stepIdx+1}</span> &nbsp; ${msg}`;
+    Array.from(traceEl.children).forEach(c => c.classList.remove("current"));
+    traceEl.appendChild(row);
+    traceEl.scrollTop = traceEl.scrollHeight;
+  }
+
+  function stepForward(){
+    if (steps.length === 0) return;
+    if (stepIdx < steps.length - 1){ stepIdx++; applyStep(); }
+    if (stepIdx >= steps.length - 1) stopPlay();
+  }
+  function stopPlay(){ if (playTimer){ clearInterval(playTimer); playTimer=null; } $("playBtn").textContent="Auto-play"; }
+
+  function loadInputs(){
+    text = $("textInput").value.trim();
+    pattern = $("patternInput").value.trim();
+    if (!text || !pattern || pattern.length > text.length){
+      $("alignCaption").textContent = "Enter a text and a pattern no longer than the text.";
+      steps = []; resetStepper(); return;
+    }
+    $("lpsPanel").style.display = algo === "kmp" ? "block" : "none";
+    $("hashPanel").style.display = algo === "rk" ? "block" : "none";
+
+    if (algo === "naive") steps = naiveSteps(text, pattern);
+    else if (algo === "kmp"){ const r = kmpSteps(text, pattern); steps = r.steps; lps = r.lps; renderLps(); }
+    else steps = rabinKarpSteps(text, pattern);
+
+    $("alignCaption").textContent = `text length ${text.length} · pattern length ${pattern.length} · algorithm: ${algo.toUpperCase()}`;
+    resetStepper();
+  }
+
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      algo = tab.dataset.algo;
+      loadInputs();
+    });
+  });
+
+  $("loadBtn").addEventListener("click", loadInputs);
+  $("stepBtn").addEventListener("click", stepForward);
+  $("resetBtn").addEventListener("click", resetStepper);
+  $("playBtn").addEventListener("click", () => {
+    if (playTimer){ stopPlay(); return; }
+    if (steps.length === 0) return;
+    $("playBtn").textContent = "Pause";
+    playTimer = setInterval(() => { stepForward(); if (stepIdx >= steps.length-1) stopPlay(); }, 500);
+  });
+
+  $("raceBtn").addEventListener("click", () => {
+    const t = $("textInput").value.trim(), p = $("patternInput").value.trim();
+    if (!t || !p || p.length > t.length){ alert("Enter a valid text/pattern first."); return; }
+    const c = countersOnly(t, p);
+    $("raceNaive").textContent = c.naive;
+    $("raceKmp").textContent = c.kmp;
+    $("raceRk").textContent = c.rk;
+  });
+
+  $("benchBtn").addEventListener("click", async () => {
+    const status = $("benchStatus"), body = $("benchBody");
+    body.innerHTML = ""; status.textContent = "generating text…";
+    await new Promise(r => setTimeout(r, 0));
+    const ALPH = "ABCD";
+    let large = "";
+    for (let i=0;i<10000;i++) large += ALPH[Math.floor(Math.random()*4)];
+    const patterns = ["AB","ABCD","ABCDAB","ABCDABCD"];
+    for (const p of patterns){
+      status.textContent = `testing "${p}"…`;
+      await new Promise(r => setTimeout(r, 0));
+      const c = countersOnly(large, p);
+      const min = Math.min(c.naive, c.kmp, c.rk);
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${p}</td>
+        <td class="${c.naive===min?'win':''}">${c.naive}</td>
+        <td class="${c.kmp===min?'win':''}">${c.kmp}</td>
+        <td class="${c.rk===min?'win':''}">${c.rk}</td>`;
+      body.appendChild(row);
+    }
+    status.textContent = "done";
+  });
+
+  // initial load
+  loadInputs();
+})();
+</script>
+</body>
+</html>
