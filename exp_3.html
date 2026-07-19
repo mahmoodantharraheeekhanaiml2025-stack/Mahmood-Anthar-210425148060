@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MST Visualizer (DAA Experiment)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #1f77b4;
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        header h1 { margin: 0; font-size: 24px; }
+        header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* Sidebar Configuration Styling */
+        .sidebar {
+            width: 280px;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .sidebar h3 { margin-top: 0; border-bottom: 2px solid #f4f6f9; padding-bottom: 10px; }
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+            transition: background 0.2s;
+        }
+        .radio-label:hover { background-color: #e9ecef; }
+        .radio-label input { margin: 0; width: 16px; height: 16px; }
+
+        /* Main Display Panels */
+        .main-content {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-left { flex: 3; align-items: center; }
+        .panel-right { flex: 2; }
+        
+        .panel h2 { margin-top: 0; font-size: 18px; color: #444; width: 100%; }
+        
+        canvas {
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            background-color: #fafbfc;
+            max-width: 100%;
+        }
+        
+        /* Output Text Formatting */
+        .cost-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .edge-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .edge-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .marker.kruskal { background-color: #d62728; }
+        .marker.prim { background-color: #007bff; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🔀 Minimum Spanning Tree Visualizer</h1>
+        <p>Design and Analysis of Algorithms Experiment — Kruskal's & Prim's Algorithm</p>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar Controls -->
+        <div class="sidebar">
+            <h3>Configuration</h3>
+            <label style="font-weight: bold; font-size: 14px; color: #666;">Select View:</label>
+            <div class="radio-group">
+                <label class="radio-label">
+                    <input type="radio" name="algorithm" value="original" checked onchange="updateVisualization()">
+                    Original Graph Only
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="algorithm" value="kruskal" onchange="updateVisualization()">
+                    Kruskal's Algorithm
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="algorithm" value="prim" onchange="updateVisualization()">
+                    Prim's Algorithm
+                </label>
+            </div>
+        </div>
+
+        <!-- Visual Working Panels -->
+        <div class="main-content">
+            <div class="panel panel-left">
+                <h2 id="graph-title">Input Graph Visualization</h2>
+                <canvas id="graphCanvas" width="600" height="400"></canvas>
+            </div>
+            
+            <div class="panel panel-right">
+                <h2>Execution Outputs</h2>
+                <div id="output-view">
+                    <!-- Dynamic JavaScript outputs populate here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Graph Data (Identical to your script values) ---
+        const n = 7;
+        const edges = [
+            {w: 7, u: 0, v: 1}, {w: 5, u: 0, v: 3}, {w: 8, u: 1, v: 2}, {w: 9, u: 1, v: 3},
+            {w: 7, u: 1, v: 4}, {w: 5, u: 2, v: 4}, {w: 15, u: 3, v: 4}, {w: 6, u: 3, v: 5},
+            {w: 8, u: 4, v: 5}, {w: 9, u: 4, v: 6}, {w: 11, u: 5, v: 6}
+        ];
+
+        // Fixed positions for canvas rendering nodes nicely
+        const nodePositions = {
+            0: {x: 80,  y: 200},
+            1: {x: 220, y: 100},
+            2: {x: 400, y: 100},
+            3: {x: 220, y: 300},
+            4: {x: 400, y: 300},
+            5: {x: 520, y: 200},
+            6: {x: 460, y: 200}
+        };
+
+        // --- Kruskal Logic Implementation ---
+        class UnionFind {
+            constructor(size) {
+                this.parent = Array.from({length: size}, (_, i) => i);
+                this.rank = Array(size).fill(0);
+            }
+            find(x) {
+                if (this.parent[x] !== x) {
+                    this.parent[x] = this.find(this.parent[x]);
+                }
+                return this.parent[x];
+            }
+            union(x, y) {
+                let rx = this.find(x), ry = this.find(y);
+                if (rx === ry) return false;
+                if (this.rank[rx] < this.rank[ry]) [rx, ry] = [ry, rx];
+                this.parent[ry] = rx;
+                if (this.rank[rx] === this.rank[ry]) this.rank[rx]++;
+                return true;
+            }
+        }
+
+        function runKruskal() {
+            let sortedEdges = [...edges].sort((a, b) => a.w - b.w);
+            let uf = new UnionFind(n);
+            let mst = [];
+            let cost = 0;
+            
+            for (let edge of sortedEdges) {
+                if (uf.union(edge.u, edge.v)) {
+                    mst.push(edge);
+                    cost += edge.w;
+                    if (mst.length === n - 1) break;
+                }
+            }
+            return {mst, cost};
+        }
+
+        // --- Prim Logic Implementation ---
+        function runPrim() {
+            let adj = Array.from({length: n}, () => []);
+            edges.forEach(e => {
+                adj[e.u].push({v: e.v, w: e.w});
+                adj[e.v].push({v: e.u, w: e.w});
+            });
+
+            let keys = Array(n).fill(Infinity);
+            let parent = Array(n).fill(-1);
+            let inMST = Array(n).fill(false);
+            keys[0] = 0;
+
+            let mst = [];
+            let cost = 0;
+
+            for (let count = 0; count < n; count++) {
+                let u = -1;
+                let minKey = Infinity;
+                for (let i = 0; i < n; i++) {
+                    if (!inMST[i] && keys[i] < minKey) {
+                        minKey = keys[i];
+                        u = i;
+                    }
+                }
+
+                if (u === -1) break;
+                inMST[u] = true;
+
+                if (parent[u] !== -1) {
+                    mst.push({u: parent[u], v: u, w: minKey});
+                    cost += minKey;
+                }
+
+                adj[u].forEach(edge => {
+                    if (!inMST[edge.v] && edge.w < keys[edge.v]) {
+                        keys[edge.v] = edge.w;
+                        parent[edge.v] = u;
+                    }
+                });
+            }
+            return {mst, cost};
+        }
+
+        // --- Canvas Rendering System ---
+        function drawGraph(highlightedEdges = [], highlightColor = '#d62728') {
+            const canvas = document.getElementById('graphCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Create a lookup map for highlighted paths
+            const highlightSet = new Set(highlightedEdges.map(e => `${Math.min(e.u, e.v)}-${Math.max(e.u, e.v)}`));
+
+            // 1. Draw Edges
+            edges.forEach(edge => {
+                const start = nodePositions[edge.u];
+                const end = nodePositions[edge.v];
+                const isHighlighted = highlightSet.has(`${Math.min(edge.u, edge.v)}-${Math.max(edge.u, edge.v)}`);
+
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                
+                if (isHighlighted) {
+                    ctx.strokeStyle = highlightColor;
+                    ctx.lineWidth = 4;
+                } else {
+                    ctx.strokeStyle = highlightedEdges.length > 0 ? '#e1e4e8' : '#999';
+                    ctx.lineWidth = 1.5;
+                }
+                ctx.stroke();
+
+                // Draw Weights mid-line
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const midX = (start.x + end.x) / 2;
+                const midY = (start.y + end.y) / 2;
+                
+                ctx.fillStyle = "white";
+                ctx.fillRect(midX - 10, midY - 8, 20, 16); // small background for readability
+                ctx.fillStyle = "#333";
+                ctx.fillText(edge.w, midX, midY);
+            });
+
+            // 2. Draw Nodes
+            for (let id in nodePositions) {
+                const pos = nodePositions[id];
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 18, 0, 2 * Math.PI);
+                ctx.fillStyle = '#1f77b4';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Labels
+                ctx.font = 'bold 14px Arial';
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(id, pos.x, pos.y);
+            }
+        }
+
+        // --- Core UI Controller ---
+        function updateVisualization() {
+            const selectedAlgo = document.querySelector('input[name="algorithm"]:checked').value;
+            const graphTitle = document.getElementById('graph-title');
+            const outputView = document.getElementById('output-view');
+
+            if (selectedAlgo === 'original') {
+                graphTitle.innerText = "Original Undirected Weighted Graph";
+                drawGraph();
+                outputView.innerHTML = `
+                    <p style="color:#666;">Select Kruskal's or Prim's Algorithm from the left menu to view execution values.</p>
+                    <strong>Input Graph Metrics:</strong><br>
+                    Total Vertices: <code>${n}</code><br>
+                    Total Connected Edges: <code>${edges.length}</code>
+                `;
+            } 
+            else if (selectedAlgo === 'kruskal') {
+                const {mst, cost} = runKruskal();
+                graphTitle.innerText = `Kruskal's MST (Total Tree Cost: ${cost})`;
+                drawGraph(mst, '#d62728');
+                
+                let listHTML = `<div class="cost-badge" style="background-color:#d62728">Total Cost: ${cost}</div><ul class="edge-list">`;
+                mst.forEach(e => {
+                    listHTML += `<li class="edge-item"><span class="marker kruskal"></span> Edge <strong>(${e.u} - ${e.v})</strong> | Weight: <code>${e.w}</code></li>`;
+                });
+                listHTML += '</ul>';
+                outputView.innerHTML = listHTML;
+            } 
+            else if (selectedAlgo === 'prim') {
+                const {mst, cost} = runPrim();
+                graphTitle.innerText = `Prim's MST (Total Tree Cost: ${cost})`;
+                drawGraph(mst, '#007bff');
+
+                let listHTML = `<div class="cost-badge" style="background-color:#007bff">Total Cost: ${cost}</div><ul class="edge-list">`;
+                mst.forEach(e => {
+                    listHTML += `<li class="edge-item"><span class="marker prim"></span> Edge <strong>(${e.u} - ${e.v})</strong> | Weight: <code>${e.w}</code></li>`;
+                });
+                listHTML += '</ul>';
+                outputView.innerHTML = listHTML;
+            }
+        }
+
+        // Initialize display on startup
+        updateVisualization();
+    </script>
+</body>
+</html>
