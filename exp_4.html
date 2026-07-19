@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijkstra's Algorithm Visualizer (DAA Experiment)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        header h1 { margin: 0; font-size: 24px; }
+        header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* Sidebar Configuration Styling */
+        .sidebar {
+            width: 280px;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .sidebar h3 { margin-top: 0; border-bottom: 2px solid #f4f6f9; padding-bottom: 10px; }
+        
+        select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            background-color: #fff;
+            cursor: pointer;
+        }
+
+        /* Main Display Panels */
+        .main-content {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-left { flex: 3; align-items: center; }
+        .panel-right { flex: 2; }
+        
+        .panel h2 { margin-top: 0; font-size: 18px; color: #444; width: 100%; }
+        
+        canvas {
+            border: 1px solid #e1e4e8;
+            border-radius: 6px;
+            background-color: #fafbfc;
+            max-width: 100%;
+        }
+        
+        /* Table and Outputs */
+        .source-badge {
+            background-color: #2980b9;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        th { background-color: #f8f9fa; color: #555; }
+        tr:hover { background-color: #fcfcfc; }
+        code {
+            background-color: #f1f2f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: Consolas, monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>📍 Dijkstra's Single Source Shortest Path Visualizer</h1>
+        <p>Design and Analysis of Algorithms Experiment — Greedy Algorithm Strategy</p>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar Controls -->
+        <div class="sidebar">
+            <h3>Configuration</h3>
+            <label style="font-weight: bold; font-size: 14px; color: #666; margin-bottom: -10px;">Select Source Node:</label>
+            <select id="sourceNodeSelect" onchange="calculateDijkstra()">
+                <option value="0">Node 0</option>
+                <option value="1">Node 1</option>
+                <option value="2">Node 2</option>
+                <option value="3">Node 3</option>
+                <option value="4">Node 4</option>
+                <option value="5">Node 5</option>
+            </select>
+        </div>
+
+        <!-- Visual Working Panels -->
+        <div class="main-content">
+            <div class="panel panel-left">
+                <h2>Shortest Path Tree (SPT) Map</h2>
+                <canvas id="graphCanvas" width="600" height="400"></canvas>
+            </div>
+            
+            <div class="panel panel-right">
+                <h2>Shortest Path Matrix Outputs</h2>
+                <div id="output-view">
+                    <!-- Table injects here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Graph Dataset Structure ---
+        const n = 6;
+        const edges = [
+            {w: 4, u: 0, v: 1}, {w: 2, u: 0, v: 2}, 
+            {w: 1, u: 1, v: 2}, {w: 5, u: 1, v: 3}, 
+            {w: 8, u: 2, v: 3}, {w: 10, u: 2, v: 4}, 
+            {w: 2, u: 3, v: 4}, {w: 6, u: 3, v: 5}, 
+            {w: 3, u: 4, v: 5}
+        ];
+
+        // Layout mapping vectors for structured node placement
+        const nodePositions = {
+            0: {x: 80,  y: 200},
+            1: {x: 220, y: 100},
+            2: {x: 220, y: 300},
+            3: {x: 400, y: 100},
+            4: {x: 400, y: 300},
+            5: {x: 520, y: 200}
+        };
+
+        // --- Dijkstra Core Computation Engine ---
+        function runDijkstra(source) {
+            let adj = Array.from({length: n}, () => []);
+            edges.forEach(e => {
+                adj[e.u].push({v: e.v, w: e.w});
+                adj[e.v].push({v: e.u, w: e.w});
+            });
+
+            let dist = Array(n).fill(Infinity);
+            let parent = Array(n).fill(-1);
+            let visited = Array(n).fill(false);
+            
+            dist[source] = 0;
+
+            for (let i = 0; i < n; i++) {
+                // Find minimum weight vertex from unvisited pool
+                let u = -1;
+                let minDist = Infinity;
+                for (let j = 0; j < n; j++) {
+                    if (!visited[j] && dist[j] < minDist) {
+                        minDist = dist[j];
+                        u = j;
+                    }
+                }
+
+                if (u === -1) break;
+                visited[u] = true;
+
+                // Relaxation cycle step
+                adj[u].forEach(edge => {
+                    if (!visited[edge.v] && dist[u] + edge.w < dist[edge.v]) {
+                        dist[edge.v] = dist[u] + edge.w;
+                        parent[edge.v] = u;
+                    }
+                });
+            }
+
+            // Extract path lists
+            let shortestEdges = [];
+            for (let i = 0; i < n; i++) {
+                if (parent[i] !== -1) {
+                    shortestEdges.push({u: parent[i], v: i});
+                }
+            }
+
+            return {dist, parent, shortestEdges};
+        }
+
+        // Trace paths recursively from source mapping
+        function getPathRoute(parent, target, source) {
+            if (target === source) return source.toString();
+            if (parent[target] === -1) return "No Path";
+            return getPathRoute(parent, parent[target], source) + " ➔ " + target;
+        }
+
+        // --- HTML Graphical Canvas Pipeline ---
+        function drawGraph(sptEdges = [], sourceNode) {
+            const canvas = document.getElementById('graphCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const sptSet = new Set(sptEdges.map(e => `${Math.min(e.u, e.v)}-${Math.max(e.u, e.v)}`));
+
+            // 1. Plot Connections
+            edges.forEach(edge => {
+                const start = nodePositions[edge.u];
+                const end = nodePositions[edge.v];
+                const isSPT = sptSet.has(`${Math.min(edge.u, edge.v)}-${Math.max(edge.u, edge.v)}`);
+
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                
+                if (isSPT) {
+                    ctx.strokeStyle = '#2980b9'; // Royal blue for shortest routing
+                    ctx.lineWidth = 4;
+                } else {
+                    ctx.strokeStyle = '#e1e4e8';
+                    ctx.lineWidth = 1.5;
+                }
+                ctx.stroke();
+
+                // Structural Weight Text Frame boxes
+                ctx.font = '12px Arial';
+                const midX = (start.x + end.x) / 2;
+                const midY = (start.y + end.y) / 2;
+                ctx.fillStyle = "white";
+                ctx.fillRect(midX - 10, midY - 8, 20, 16);
+                ctx.fillStyle = "#555";
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(edge.w, midX, midY);
+            });
+
+            // 2. Plot Nodes
+            for (let id in nodePositions) {
+                const pos = nodePositions[id];
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 18, 0, 2 * Math.PI);
+                
+                // Color root source uniquely
+                ctx.fillStyle = (parseInt(id) === sourceNode) ? '#27ae60' : '#34495e';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.font = 'bold 14px Arial';
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(id, pos.x, pos.y);
+            }
+        }
+
+        // --- Core UI Controller ---
+        function calculateDijkstra() {
+            const source = parseInt(document.getElementById('sourceNodeSelect').value);
+            const {dist, parent, shortestEdges} = runDijkstra(source);
+            
+            // Re-render Graph Frame
+            drawGraph(shortestEdges, source);
+
+            // Construct Data Matrix Table UI
+            let htmlTable = `
+                <div class="source-badge">Source Node: ${source}</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Target</th>
+                            <th>Shortest Distance</th>
+                            <th>Complete Path Route</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            for (let i = 0; i < n; i++) {
+                const printingDist = dist[i] === Infinity ? '∞' : dist[i];
+                const printingPath = getPathRoute(parent, i, source);
+                htmlTable += `
+                    <tr>
+                        <td><strong>Node ${i}</strong></td>
+                        <td><code>Min Cost: ${printingDist}</code></td>
+                        <td><small>${printingPath}</small></td>
+                    </tr>
+                `;
+            }
+
+            htmlTable += `</tbody></table>`;
+            document.getElementById('output-view').innerHTML = htmlTable;
+        }
+
+        // Initialize execution grid on window payload check
+        calculateDijkstra();
+    </script>
+</body>
+</html>
