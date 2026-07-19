@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Min-Max Divide & Conquer Visualizer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f6f9;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #8e44ad;
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        header h1 { margin: 0; font-size: 24px; }
+        header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        /* Sidebar Controls */
+        .sidebar {
+            width: 300px;
+            background-color: white;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .sidebar h3 { margin-top: 0; border-bottom: 2px solid #f4f6f9; padding-bottom: 10px; }
+        
+        input[type="text"] {
+            width: 90%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        button {
+            background-color: #8e44ad;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #732d91; }
+
+        /* Content Layout */
+        .main-content {
+            flex: 1;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel-left { flex: 3; align-items: center; overflow-x: auto; }
+        .panel-right { flex: 2; }
+        
+        .panel h2 { margin-top: 0; font-size: 18px; color: #444; width: 100%; }
+        
+        /* Visualizing Array Layout */
+        .array-container {
+            display: flex;
+            gap: 8px;
+            margin: 20px 0;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .array-box {
+            background-color: #34495e;
+            color: white;
+            padding: 12px 18px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 16px;
+            min-width: 30px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* Output Badges */
+        .badge {
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .badge-min { background-color: #e74c3c; }
+        .badge-max { background-color: #2ecc71; }
+        
+        /* Execution Logs Trace */
+        .trace-log {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            overflow-y: auto;
+            flex: 1;
+            line-height: 1.6;
+        }
+        .indent { margin-left: 15px; border-left: 1px dashed #7f8c8d; padding-left: 8px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>⚡ Min-Max Value Visualizer (Divide & Conquer)</h1>
+        <p>Design and Analysis of Algorithms Experiment — Recursive Space Decomposition Strategy</p>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar Controls -->
+        <div class="sidebar">
+            <h3>Input Configuration</h3>
+            <label style="font-weight: bold; font-size: 14px; color: #666;">Enter Array Values (Comma Separated):</label>
+            <input type="text" id="arrayInput" value="70, 250, 50, 80, 140, 12, 190">
+            <button onclick="processMinMax()">Compute Min-Max Tree</button>
+            <hr style="width:100%; border:0; border-top:1px solid #eee;">
+            <p style="font-size: 13px; color:#777; line-height:1.4;">
+                <strong>Divide & Conquer Mechanics:</strong><br>
+                Divides the execution pool indices down into singular or paired sets, executing comparisons recursively to solve subproblems efficiently.
+            </p>
+        </div>
+
+        <!-- Main Display Layout Panels -->
+        <div class="main-content">
+            <div class="panel panel-left">
+                <h2>Parsed Array Layout</h2>
+                <div class="array-container" id="visualArray">
+                    <!-- Dynamic blocks go here -->
+                </div>
+                <h2 style="margin-top:20px;">Execution Call Trace</h2>
+                <div class="trace-log" id="traceContainer">
+                    <!-- Tree execution statements insert here -->
+                </div>
+            </div>
+            
+            <div class="panel panel-right">
+                <h2>Computed Final Extremes</h2>
+                <div id="outputContainer">
+                    <!-- Metrics placeholders -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let logs = [];
+
+        // --- Core Divide & Conquer Algorithm Core ---
+        function getMinMax(arr, low, high, depth = 0) {
+            let space = "&nbsp;".repeat(depth * 4);
+            
+            // Case 1: Only one element remaining
+            if (low === high) {
+                logs.push(`<div class="indent">📌 Base Case reached [Index ${low}]: Value = ${arr[low]} ➔ Min: ${arr[low]}, Max: ${arr[low]}</div>`);
+                return { min: arr[low], max: arr[low] };
+            }
+            
+            // Case 2: Only two elements remaining
+            if (high === low + 1) {
+                let localMin = Math.min(arr[low], arr[high]);
+                let localMax = Math.max(arr[low], arr[high]);
+                logs.push(`<div class="indent">📌 Pair comparison [Indices ${low}-${high}]: (${arr[low]}, ${arr[high]}) ➔ Min: ${localMin}, Max: ${localMax}</div>`);
+                return { min: localMin, max: localMax };
+            }
+            
+            // Case 3: More than 2 elements -> Divide step
+            let mid = Math.floor((low + high) / 2);
+            logs.push(`<div class="indent">🔄 Splitting Array Range [${low} to ${high}] at index ${mid}</div>`);
+            
+            // Solve Left Side Subproblem
+            let leftResult = getMinMax(arr, low, mid, depth + 1);
+            
+            // Solve Right Side Subproblem
+            let rightResult = getMinMax(arr, mid + 1, high, depth + 1);
+            
+            // Conquer Step: Combine results
+            let finalMin = Math.min(leftResult.min, rightResult.min);
+            let finalMax = Math.max(leftResult.max, rightResult.max);
+            
+            logs.push(`<div class="indent">✅ Combining Range [${low}-${high}]: Min (${leftResult.min} vs ${rightResult.min}) ➔ ${finalMin} | Max (${leftResult.max} vs ${rightResult.max}) ➔ ${finalMax}</div>`);
+            
+            return { min: finalMin, max: finalMax };
+        }
+
+        // --- Controller Interface Connector ---
+        function processMinMax() {
+            const rawInput = document.getElementById('arrayInput').value;
+            // Clean values string into clean numbers sequence mapping 
+            const arr = rawInput.split(',').map(num => parseInt(num.trim())).filter(num => !isNaN(num));
+            
+            if (arr.length === 0) {
+                alert("Please type a valid sequence of numeric digits.");
+                return;
+            }
+
+            // 1. Render Graphic Array block tiles
+            const arrayContainer = document.getElementById('visualArray');
+            arrayContainer.innerHTML = '';
+            arr.forEach(val => {
+                arrayContainer.innerHTML += `<div class="array-box">${val}</div>`;
+            });
+
+            // 2. Clear trace logs and execute the logic
+            logs = ["🏁 Initiating Divide and Conquer Execution Tracker Tree..."];
+            const result = getMinMax(arr, 0, arr.length - 1);
+            logs.push("🔚 Evaluation complete.");
+
+            // 3. Inject trace logs output directly into DOM
+            document.getElementById('traceContainer').innerHTML = logs.join("");
+
+            // 4. Update the performance outputs grid panel
+            document.getElementById('outputContainer').innerHTML = `
+                <div class="badge badge-min">
+                    <span>📉 Minimum Value Found:</span>
+                    <span>${result.min}</span>
+                </div>
+                <div class="badge badge-max">
+                    <span>📈 Maximum Value Found:</span>
+                    <span>${result.max}</span>
+                </div>
+                <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+                    <tr>
+                        <td style="padding:10px; border-bottom:1px solid #eee;"><strong>Array Length:</strong></td>
+                        <td style="padding:10px; border-bottom:1px solid #eee;"><code>${arr.length} elements</code></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px; border-bottom:1px solid #eee;"><strong>Time Complexity:</strong></td>
+                        <td style="padding:10px; border-bottom:1px solid #eee;"><code>O(n)</code></td>
+                    </tr>
+                    <tr>
+                        <td style="padding:10px; border-bottom:1px solid #eee;"><strong>Total Comparisons:</strong></td>
+                        <td style="padding:10px; border-bottom:1px solid #eee;"><code>${Math.ceil(1.5 * arr.length) - 2} (Optimal)</code></td>
+                    </tr>
+                </table>
+            `;
+        }
+
+        // Initial setup load trigger on application start
+        processMinMax();
+    </script>
+</body>
+</html>
