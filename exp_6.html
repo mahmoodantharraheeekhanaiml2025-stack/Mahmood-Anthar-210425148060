@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matrix Chain Multiplication — Optimal Cost via DP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#122320; --void-2:#0c1b17; --panel:#16302a;
+    --parchment:#EDE6D6; --muted:#8FA79E;
+    --amber:#E8A33D; --match:#7BC496; --mismatch:#E2604F; --blue:#79A6D2;
+    --rule: rgba(237,230,214,0.14); --rule-soft: rgba(237,230,214,0.07);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(ellipse 900px 500px at 15% -10%, rgba(232,163,61,0.08), transparent), var(--void);
+    color:var(--parchment); font-family:'Inter',sans-serif; min-height:100vh; padding:32px 20px 80px;
+  }
+  .wrap{max-width:1100px;margin:0 auto;}
+  header{margin-bottom:32px;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.18em;color:var(--amber);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:10px;}
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--amber);display:inline-block;}
+  h1{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:clamp(26px,4vw,38px);line-height:1.15;margin:0 0 14px;letter-spacing:-0.01em;}
+  h1 span{color:var(--muted);}
+  .sub{color:var(--muted);font-size:15px;line-height:1.6;max-width:660px;}
+
+  .deck{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:22px 24px;margin-bottom:22px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;}
+  @media (max-width:680px){ .deck{grid-template-columns:1fr;} }
+  .field label{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .field input{width:100%;background:var(--void-2);border:1px solid var(--rule);color:var(--parchment);font-family:'JetBrains Mono',monospace;font-size:15px;padding:11px 12px;border-radius:6px;letter-spacing:.03em;}
+  .field input:focus{outline:none;border-color:var(--amber);}
+  .field .hint{color:var(--muted);font-size:11.5px;margin-top:6px;font-family:'JetBrains Mono',monospace;}
+  button.run{background:var(--amber);color:var(--void-2);border:none;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;letter-spacing:.04em;padding:12px 22px;border-radius:6px;cursor:pointer;text-transform:uppercase;white-space:nowrap;transition:transform .12s ease, background .12s ease;}
+  button.run:hover{background:#f3b658;transform:translateY(-1px);}
+  .err{color:var(--mismatch);font-family:'JetBrains Mono',monospace;font-size:12.5px;margin-bottom:16px;min-height:16px;}
+
+  .matlist{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px;}
+  .matchip{font-family:'JetBrains Mono',monospace;font-size:12px;border:1px solid var(--rule);background:var(--void-2);color:var(--muted);padding:6px 12px;border-radius:20px;}
+  .matchip b{color:var(--parchment);}
+
+  .panel{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:26px;margin-bottom:26px;}
+  .panel h2{font-family:'JetBrains Mono',monospace;font-size:17px;margin:0 0 6px;}
+  .panel .desc{color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.6;}
+
+  .grid-layout{display:grid;grid-template-columns:1fr 320px;gap:24px;}
+  @media (max-width:860px){ .grid-layout{grid-template-columns:1fr;} }
+
+  table.dp{border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:13px;}
+  table.dp th, table.dp td{border:1px solid var(--rule-soft);width:56px;height:44px;text-align:center;transition:background .2s ease,color .2s ease;}
+  table.dp th{background:var(--void-2);color:var(--amber);font-weight:600;font-size:12px;}
+  table.dp td{background:var(--void-2);color:var(--parchment);}
+  table.dp td.blank{color:var(--rule);}
+  table.dp td.trial-a{outline:2px solid var(--blue); outline-offset:-2px;}
+  table.dp td.trial-b{outline:2px solid var(--blue); outline-offset:-2px;}
+  table.dp td.active{background:var(--amber);color:var(--void-2);font-weight:700;}
+  table.dp td.done{background:var(--match);color:var(--void-2);font-weight:700;}
+  table.dp td.filled{color:var(--parchment);}
+
+  .log{background:var(--void-2);border:1px solid var(--rule-soft);border-radius:8px;padding:14px 16px;height:260px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:var(--muted);}
+  .log .line{margin-bottom:2px;}
+  .log .line.hi{color:var(--amber);}
+  .log .line.ok{color:var(--match);}
+
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid var(--rule-soft);}
+  .ctrl-btn{background:var(--void-2);border:1px solid var(--rule);color:var(--parchment);font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:8px 14px;border-radius:6px;cursor:pointer;}
+  .ctrl-btn:hover{border-color:var(--amber);}
+  .ctrl-btn.primary{background:var(--amber);color:var(--void-2);border-color:var(--amber);font-weight:700;}
+  .speed-wrap{display:flex;align-items:center;gap:8px;margin-left:auto;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11.5px;}
+  input[type=range]{accent-color:var(--amber);}
+  .progress{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
+
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px;}
+  @media (max-width:720px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
+  .stat{background:var(--void-2);border:1px solid var(--rule-soft);border-radius:8px;padding:14px 16px;}
+  .stat .label{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+  .stat .value{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--parchment);}
+  .stat .value.hi{color:var(--amber);}
+
+  .parens{font-family:'JetBrains Mono',monospace;font-size:17px;background:var(--void-2);border:1px solid var(--rule-soft);border-radius:8px;padding:16px 18px;margin-top:18px;letter-spacing:.02em;line-height:1.6;word-break:break-word;}
+  .parens .op{color:var(--amber);}
+
+  /* org-chart tree */
+  .tree-scroll{overflow-x:auto;padding:20px 8px 6px;}
+  .tree{display:flex;justify-content:center;}
+  ul.tnode{list-style:none;margin:0;padding:0;display:flex;position:relative;}
+  ul.tnode ul.tnode{margin-top:34px;}
+  li.tn{list-style:none;padding:0 10px;text-align:center;position:relative;}
+  li.tn > .box{
+    display:inline-block;font-family:'JetBrains Mono',monospace;font-size:12px;
+    background:var(--void-2);border:1px solid var(--rule);border-radius:6px;
+    padding:8px 12px;color:var(--parchment);white-space:nowrap;position:relative;z-index:1;
+  }
+  li.tn.leaf > .box{border-color:var(--match);color:var(--match);}
+  li.tn.root > .box{border-color:var(--amber);color:var(--amber);font-weight:700;}
+  li.tn > ul{padding-top:34px;position:relative;}
+  li.tn > ul::before{
+    content:"";position:absolute;top:0;left:50%;height:34px;border-left:1px solid var(--rule);
+  }
+  li.tn > ul > li.tn::before{
+    content:"";position:absolute;top:0;left:0;right:50%;height:1px;border-top:1px solid var(--rule);
+  }
+  li.tn > ul > li.tn:last-child::before{ right:auto; left:50%; width:50%; }
+  li.tn > ul > li.tn:first-child::before{ left:50%; right:0; }
+  li.tn > ul > li.tn:only-child::before{ display:none; }
+  li.tn > ul > li.tn::after{
+    content:"";position:absolute;top:0;left:50%;height:34px;border-left:1px solid var(--rule);
+    display:block;top:-34px;
+  }
+
+  table.ref{width:100%;border-collapse:collapse;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:12.5px;}
+  table.ref th, table.ref td{border:1px solid var(--rule-soft);padding:10px 12px;text-align:left;}
+  table.ref th{color:var(--amber);font-weight:600;background:var(--void-2);text-transform:uppercase;letter-spacing:.04em;font-size:11px;}
+  table.ref td{color:var(--parchment);}
+  table.ref tr td:first-child{color:var(--muted);}
+
+  footer{margin-top:36px;color:var(--muted);font-size:12px;text-align:center;font-family:'JetBrains Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">DAA Project · Dynamic Programming</div>
+    <h1>Optimal Cost Computation <span>in Matrix Chain Multiplication</span></h1>
+    <p class="sub">Enter the dimension sequence of the matrix chain, then watch the DP table fill diagonal-by-diagonal — every split point k tried, every cost compared — until the minimum multiplication cost and its parenthesization fall out.</p>
+  </header>
+
+  <div class="deck">
+    <div class="field">
+      <label for="dimsInput">Matrix dimensions (p0, p1, … pn — matrix i is p[i-1] × p[i])</label>
+      <input id="dimsInput" type="text" value="10, 30, 5, 60, 10">
+      <div class="hint" id="matHint"></div>
+    </div>
+    <button class="run" id="runBtn">Compute</button>
+  </div>
+  <div class="err" id="errMsg"></div>
+  <div class="matlist" id="matList"></div>
+
+  <div class="panel">
+    <h2>DP table fill</h2>
+    <div class="desc">m[i][j] = minimum scalar multiplications to compute Ai·Ai+1···Aj. Cells fill by increasing chain length; the amber cell is the one being solved, blue outlines mark the two sub-chains being combined for the split currently on trial.</div>
+    <div class="grid-layout">
+      <div>
+        <div style="overflow-x:auto;" id="tableWrap"></div>
+        <div class="controls">
+          <button class="ctrl-btn primary" id="playBtn">▶ Play</button>
+          <button class="ctrl-btn" id="stepBtn">Step</button>
+          <button class="ctrl-btn" id="resetBtn">Reset</button>
+          <span class="progress" id="progressLbl">step 0 / 0</span>
+          <div class="speed-wrap">Speed<input type="range" id="speedSlider" min="10" max="300" value="230"></div>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><div class="label">Splits tried</div><div class="value hi" id="trialsLive">0</div></div>
+          <div class="stat"><div class="label">Cells solved</div><div class="value" id="cellsLive">0</div></div>
+          <div class="stat"><div class="label">Total cells</div><div class="value" id="cellsTotal">0</div></div>
+          <div class="stat"><div class="label">Avg. compute time</div><div class="value" id="timeVal">—</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="log" id="logBox"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Result</h2>
+    <div class="desc">The minimum-cost parenthesization, read off the split table s[i][j].</div>
+    <div class="stat-row" style="grid-template-columns:repeat(2,1fr); max-width:520px;">
+      <div class="stat"><div class="label">Minimum scalar multiplications</div><div class="value hi" id="minCostVal">—</div></div>
+      <div class="stat"><div class="label">Brute-force parenthesizations (Catalan)</div><div class="value" id="catalanVal">—</div></div>
+    </div>
+    <div class="parens" id="parensBox"></div>
+    <div class="tree-scroll"><div class="tree" id="treeBox"></div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Why DP over brute force</h2>
+    <table class="ref">
+      <thead><tr><th>Approach</th><th>Time</th><th>Space</th><th>Idea</th></tr></thead>
+      <tbody>
+        <tr><td>Brute-force recursion</td><td>O(4ⁿ / n^1.5) — Catalan(n−1)</td><td>O(n) stack</td><td>Try every possible parenthesization from scratch</td></tr>
+        <tr><td>Plain recursion + memo</td><td>O(n³)</td><td>O(n²)</td><td>Cache overlapping subproblems m[i][j]</td></tr>
+        <tr><td>Bottom-up DP (this app)</td><td>O(n³)</td><td>O(n²)</td><td>Fill m[i][j] by increasing chain length, no recursion overhead</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>n = number of matrices in the chain · m[i][j] computed for 1 ≤ i ≤ j ≤ n</footer>
+</div>
+
+<script>
+(function(){
+  let dims = [10,30,5,60,10];
+  let n = dims.length-1;
+  let m=[], s=[], steps=[];
+  let playState = { idx:-1, playing:false, timer:null, speed:230 };
+  let minCost=0, catalan=0, timeMs=0;
+
+  function catalanNum(k){
+    // Catalan(k) = (2k choose k)/(k+1), k = n-1 matrices -> n-1 splits
+    if(k<0) return 1;
+    let res=1;
+    for(let i=0;i<k;i++) res = res*(2*k-i)/(i+1);
+    return Math.round(res/(k+1));
+  }
+
+  function buildDP(dims){
+    const n = dims.length-1;
+    const m = Array.from({length:n+1},()=>new Array(n+1).fill(0));
+    const s = Array.from({length:n+1},()=>new Array(n+1).fill(0));
+    const steps = [];
+    for(let l=2;l<=n;l++){
+      for(let i=1;i<=n-l+1;i++){
+        const j=i+l-1;
+        m[i][j]=Infinity;
+        for(let k=i;k<j;k++){
+          const term = dims[i-1]*dims[k]*dims[j];
+          const cost = m[i][k]+m[k+1][j]+term;
+          const isBest = cost < m[i][j];
+          steps.push({type:'trial', i,j,k,cost,mik:m[i][k],mkj:m[k+1][j],term,isBest});
+          if(isBest){ m[i][j]=cost; s[i][j]=k; }
+        }
+        steps.push({type:'done', i,j, value:m[i][j], k:s[i][j]});
+      }
+    }
+    return {m,s,steps};
+  }
+
+  function timeIt(fn, reps){
+    const start = performance.now();
+    for(let r=0;r<reps;r++) fn(dims);
+    const end = performance.now();
+    return (end-start)/reps;
+  }
+
+  function parseDims(){
+    const raw = document.getElementById('dimsInput').value;
+    const parts = raw.split(',').map(s=>s.trim()).filter(s=>s.length);
+    const nums = parts.map(Number);
+    return nums;
+  }
+
+  function run(){
+    const errEl = document.getElementById('errMsg');
+    errEl.textContent='';
+    const nums = parseDims();
+    if(nums.length<3){ errEl.textContent='Enter at least 3 dimensions (needs ≥ 2 matrices).'; return; }
+    if(nums.some(x=>!Number.isFinite(x)||x<=0)){ errEl.textContent='All dimensions must be positive numbers.'; return; }
+    if(nums.length>12){ errEl.textContent='Keep it to 11 matrices or fewer for a readable table.'; return; }
+    dims = nums;
+    n = dims.length-1;
+
+    const built = buildDP(dims);
+    m=built.m; s=built.s; steps=built.steps;
+    minCost = m[1][n];
+    catalan = catalanNum(n-1);
+    timeMs = timeIt((d)=>buildDP(d), 800);
+
+    playState = {idx:-1, playing:false, timer:null, speed:playState.speed};
+    renderMatList();
+    renderTable();
+    renderControlsStats();
+    renderResult();
+    document.getElementById('logBox').innerHTML='';
+    document.getElementById('progressLbl').textContent='step 0 / '+steps.length;
+  }
+
+  function renderMatList(){
+    const el = document.getElementById('matList');
+    let html='';
+    for(let i=1;i<=n;i++){
+      html += '<div class="matchip">A<b>'+i+'</b> &nbsp;'+dims[i-1]+'×'+dims[i]+'</div>';
+    }
+    el.innerHTML = html;
+  }
+
+  function renderTable(){
+    const wrap = document.getElementById('tableWrap');
+    let html = '<table class="dp"><thead><tr><th></th>';
+    for(let j=1;j<=n;j++) html += '<th>A'+j+'</th>';
+    html += '</tr></thead><tbody>';
+    for(let i=1;i<=n;i++){
+      html += '<tr><th>A'+i+'</th>';
+      for(let j=1;j<=n;j++){
+        if(j<i) html += '<td class="blank" id="cell-'+i+'-'+j+'">·</td>';
+        else if(j===i) html += '<td class="filled" id="cell-'+i+'-'+j+'">0</td>';
+        else html += '<td id="cell-'+i+'-'+j+'"></td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+
+  function renderControlsStats(){
+    document.getElementById('cellsTotal').textContent = (n*(n-1)/2);
+    document.getElementById('cellsLive').textContent = 0;
+    document.getElementById('trialsLive').textContent = 0;
+    document.getElementById('timeVal').textContent = timeMs.toFixed(4)+' ms';
+  }
+
+  function renderResult(){
+    document.getElementById('minCostVal').textContent = minCost;
+    document.getElementById('catalanVal').textContent = catalan.toLocaleString();
+    document.getElementById('parensBox').innerHTML = formatParens(s,1,n);
+    document.getElementById('treeBox').innerHTML = '<ul class="tnode"><li class="tn root">'+buildTreeHTML(s,1,n,true)+'</li></ul>';
+  }
+
+  function formatParens(s,i,j){
+    if(i===j) return 'A'+i;
+    const k = s[i][j];
+    return '<span class="op">(</span>'+formatParens(s,i,k)+' <span class="op">×</span> '+formatParens(s,k+1,j)+'<span class="op">)</span>';
+  }
+
+  function buildTreeHTML(s,i,j,isRoot){
+    if(i===j){
+      return '<div class="box">A'+i+'<br><span style="color:var(--muted);font-size:10px;">'+dims[i-1]+'×'+dims[i]+'</span></div>';
+    }
+    const k = s[i][j];
+    const label = (i===j? 'A'+i : 'A'+i+'..'+j) + '<br><span style="color:var(--muted);font-size:10px;">cost '+m[i][j]+'</span>';
+    let html = '<div class="box">'+label+'</div>';
+    html += '<ul class="tnode">';
+    html += '<li class="tn'+(k===i? ' leaf':'')+'">'+buildTreeHTML(s,i,k,false)+'</li>';
+    html += '<li class="tn'+(k+1===j? ' leaf':'')+'">'+buildTreeHTML(s,k+1,j,false)+'</li>';
+    html += '</ul>';
+    return html;
+  }
+
+  // ---------- playback ----------
+  function togglePlay(){ playState.playing ? pausePlay() : startPlay(); }
+  function startPlay(){
+    if(playState.idx>=steps.length-1) resetVisual();
+    playState.playing=true;
+    document.getElementById('playBtn').textContent='⏸ Pause';
+    playState.timer = setInterval(()=>advanceStep(), playState.speed);
+  }
+  function pausePlay(){
+    playState.playing=false;
+    clearInterval(playState.timer);
+    const btn=document.getElementById('playBtn'); if(btn) btn.textContent='▶ Play';
+  }
+  function resetVisual(){
+    playState.idx=-1;
+    renderTable();
+    document.getElementById('logBox').innerHTML='';
+    document.getElementById('cellsLive').textContent=0;
+    document.getElementById('trialsLive').textContent=0;
+    document.getElementById('progressLbl').textContent='step 0 / '+steps.length;
+  }
+  function resetAll(){ pausePlay(); resetVisual(); }
+
+  function advanceStep(){
+    if(playState.idx>=steps.length-1){ pausePlay(); return; }
+    playState.idx++;
+    applyStep(steps[playState.idx]);
+    document.getElementById('progressLbl').textContent='step '+(playState.idx+1)+' / '+steps.length;
+  }
+
+  let trialsCount=0, cellsCount=0;
+  function applyStep(st){
+    document.querySelectorAll('table.dp td.active').forEach(c=>c.classList.remove('active'));
+    document.querySelectorAll('table.dp td.trial-a, table.dp td.trial-b').forEach(c=>{c.classList.remove('trial-a');c.classList.remove('trial-b');});
+    const log = document.getElementById('logBox');
+    if(st.type==='trial'){
+      trialsCount++;
+      document.getElementById('trialsLive').textContent=trialsCount;
+      const cellMain = document.getElementById('cell-'+st.i+'-'+st.j);
+      if(cellMain) cellMain.classList.add('active');
+      const cellA = document.getElementById('cell-'+st.i+'-'+st.k);
+      const cellB = document.getElementById('cell-'+(st.k+1)+'-'+st.j);
+      if(cellA) cellA.classList.add('trial-a');
+      if(cellB) cellB.classList.add('trial-b');
+      const line = document.createElement('div');
+      line.className = 'line'+(st.isBest?' hi':'');
+      line.textContent = 'k='+st.k+':  m['+st.i+']['+st.k+'] + m['+(st.k+1)+']['+st.j+'] + '+st.term+' = '+st.mik+' + '+st.mkj+' + '+st.term+' = '+st.cost + (st.isBest? '  ← new best' : '');
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    } else if(st.type==='done'){
+      cellsCount++;
+      document.getElementById('cellsLive').textContent=cellsCount;
+      const cell = document.getElementById('cell-'+st.i+'-'+st.j);
+      if(cell){ cell.textContent = st.value; cell.classList.add('done'); setTimeout(()=>{cell.classList.remove('done'); cell.classList.add('filled');}, 260); }
+      const line = document.createElement('div');
+      line.className='line ok';
+      line.textContent = '✓ m['+st.i+']['+st.j+'] = '+st.value+'  (split at k='+st.k+')';
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+
+  document.getElementById('runBtn').addEventListener('click', run);
+  document.getElementById('dimsInput').addEventListener('keydown', e=>{ if(e.key==='Enter') run(); });
+  document.getElementById('playBtn').addEventListener('click', togglePlay);
+  document.getElementById('stepBtn').addEventListener('click', advanceStep);
+  document.getElementById('resetBtn').addEventListener('click', resetAll);
+  document.getElementById('speedSlider').addEventListener('input', e=>{ playState.speed = 310-parseInt(e.target.value); if(playState.playing){ pausePlay(); startPlay(); } });
+
+  run();
+})();
+</script>
+</body>
+</html>
