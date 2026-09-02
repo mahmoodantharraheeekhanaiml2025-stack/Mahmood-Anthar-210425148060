@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Improving Quick Sort Efficiency using Randomized Algorithm</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.75);
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --success: #34d399;
+            --danger: #f87171;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at top center, #1e293b 0%, var(--bg) 100%);
+            color: var(--text-main);
+            margin: 0;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: var(--accent);
+            margin-bottom: 8px;
+            text-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 25px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 20px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+
+        #code.tab-content.active {
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        input[type="number"] {
+            background: #1e293b;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            width: 100px;
+        }
+
+        button.run-btn {
+            padding: 9px 24px;
+            background: var(--accent);
+            color: #0f172a;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: opacity 0.2s;
+        }
+
+        button.run-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Results Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: right;
+            border-bottom: 1px solid var(--border);
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: #1e293b;
+            color: var(--accent);
+            text-align: right;
+        }
+
+        th:first-child, td:first-child {
+            text-align: left;
+            font-family: inherit;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .highlight-red {
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        .highlight-green {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        pre {
+            background: #090d16;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Improving Quick Sort Efficiency using Randomized Algorithm</h1>
+        <p class="subtitle">Deterministic vs. Randomized Quick Sort Performance Analysis • DAA Experiment</p>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('visualizer')">Visualizer</button>
+        <button class="tab-btn" onclick="switchTab('code')">Python Source</button>
+    </div>
+
+    <div id="visualizer" class="tab-content active">
+        <div class="controls">
+            <div>
+                <label for="array-size">Array Size (N):</label><br>
+                <input type="number" id="array-size" value="1000" min="100" max="3000" step="100" style="margin-top: 5px;">
+            </div>
+
+            <div style="align-self: flex-end;">
+                <button class="run-btn" onclick="runBenchmark()">Run Benchmark</button>
+            </div>
+        </div>
+
+        <div>
+            <table id="benchmark-table">
+                <thead>
+                    <tr>
+                        <th>Input Type</th>
+                        <th>DQS Comps</th>
+                        <th>DQS Time (ms)</th>
+                        <th>RQS Comps</th>
+                        <th>RQS Time (ms)</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); font-family: inherit;">
+                            Click "Run Benchmark" to execute performance comparison...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="code" class="tab-content">
+        <h2>Python Implementation</h2>
+        <pre><code>import random
+import time
+import sys
+sys.setrecursionlimit(20000)
+
+comparisons = 0
+
+def partition(arr, low, high):
+    global comparisons
+    pivot = arr[high]
+    i = low - 1
+    for j in range(low, high):
+        comparisons += 1
+        if arr[j] <= pivot:
+            i += 1
+            arr[i], arr[j] = arr[j], arr[i]
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    return i + 1
+
+def deterministic_quicksort(arr, low, high):
+    if low < high:
+        pi = partition(arr, low, high)
+        deterministic_quicksort(arr, low, pi - 1)
+        deterministic_quicksort(arr, pi + 1, high)
+
+def randomized_quicksort(arr, low, high):
+    if low < high:
+        # Randomize pivot
+        rand_idx = random.randint(low, high)
+        arr[rand_idx], arr[high] = arr[high], arr[rand_idx]
+        pi = partition(arr, low, high)
+        randomized_quicksort(arr, low, pi - 1)
+        randomized_quicksort(arr, pi + 1, high)
+
+def run_test(name, sort_fn, arr):
+    global comparisons
+    a = arr[:]
+    comparisons = 0
+    start = time.perf_counter()
+    sort_fn(a, 0, len(a) - 1)
+    elapsed = (time.perf_counter() - start) * 1000
+    return comparisons, elapsed
+
+N = 5000
+test_cases = {
+    'Random': [random.randint(1, 100000) for _ in range(N)],
+    'Sorted': list(range(N)),
+    'Reverse': list(range(N, 0, -1)),
+    'Nearly Sorted': list(range(N))
+}
+
+# Make Nearly Sorted slightly shuffled
+ns = test_cases['Nearly Sorted']
+for _ in range(N // 20):
+    i, j = random.randint(0, N-1), random.randint(0, N-1)
+    ns[i], ns[j] = ns[j], ns[i]
+
+print(f"{'Input Type':<16} {'DQS Comps':>12} {'DQS Time(ms)':>14} {'RQS Comps':>12} {'RQS Time(ms)':>14}")
+print('-' * 72)
+for case, arr in test_cases.items():
+    d_comps, d_time = run_test('DQS', deterministic_quicksort, arr)
+    r_comps, r_time = run_test('RQS', randomized_quicksort, arr)
+    print(f"{case:<16} {d_comps:>12} {d_time:>14.2f} {r_comps:>12} {r_time:>14.2f}")</code></pre>
+    </div>
+</div>
+
+<script>
+    let dComps = 0;
+    let rComps = 0;
+
+    function partitionDQS(arr, low, high) {
+        let pivot = arr[high];
+        let i = low - 1;
+        for (let j = low; j < high; j++) {
+            dComps++;
+            if (arr[j] <= pivot) {
+                i++;
+                let temp = arr[i]; arr[i] = arr[j]; arr[j] = temp;
+            }
+        }
+        let temp = arr[i + 1]; arr[i + 1] = arr[high]; arr[high] = temp;
+        return i + 1;
+    }
+
+    function deterministicQuicksort(arr, low, high) {
+        if (low < high) {
+            let pi = partitionDQS(arr, low, high);
+            deterministicQuicksort(arr, low, pi - 1);
+            deterministicQuicksort(arr, pi + 1, high);
+        }
+    }
+
+    function partitionRQS(arr, low, high) {
+        let pivot = arr[high];
+        let i = low - 1;
+        for (let j = low; j < high; j++) {
+            rComps++;
+            if (arr[j] <= pivot) {
+                i++;
+                let temp = arr[i]; arr[i] = arr[j]; arr[j] = temp;
+            }
+        }
+        let temp = arr[i + 1]; arr[i + 1] = arr[high]; arr[high] = temp;
+        return i + 1;
+    }
+
+    function randomizedQuicksort(arr, low, high) {
+        if (low < high) {
+            let randIdx = Math.floor(Math.random() * (high - low + 1)) + low;
+            let temp = arr[randIdx]; arr[randIdx] = arr[high]; arr[high] = temp;
+            let pi = partitionRQS(arr, low, high);
+            randomizedQuicksort(arr, low, pi - 1);
+            randomizedQuicksort(arr, pi + 1, high);
+        }
+    }
+
+    function runBenchmark() {
+        const N = parseInt(document.getElementById('array-size').value) || 1000;
+        
+        let randomArr = Array.from({length: N}, () => Math.floor(Math.random() * 100000));
+        let sortedArr = Array.from({length: N}, (_, i) => i);
+        let reverseArr = Array.from({length: N}, (_, i) => N - i);
+        
+        let nearlySortedArr = [...sortedArr];
+        for (let k = 0; k < Math.floor(N / 20); k++) {
+            let i = Math.floor(Math.random() * N);
+            let j = Math.floor(Math.random() * N);
+            let temp = nearlySortedArr[i]; nearlySortedArr[i] = nearlySortedArr[j]; nearlySortedArr[j] = temp;
+        }
+
+        const testCases = {
+            'Random': randomArr,
+            'Sorted': sortedArr,
+            'Reverse': reverseArr,
+            'Nearly Sorted': nearlySortedArr
+        };
+
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+
+        for (let [caseName, arr] of Object.entries(testCases)) {
+            // Run Deterministic Quick Sort
+            dComps = 0;
+            let aDQS = [...arr];
+            let t0 = performance.now();
+            deterministicQuicksort(aDQS, 0, aDQS.length - 1);
+            let dTime = (performance.now() - t0).toFixed(2);
+
+            // Run Randomized Quick Sort
+            rComps = 0;
+            let aRQS = [...arr];
+            let t1 = performance.now();
+            randomizedQuicksort(aRQS, 0, aRQS.length - 1);
+            let rTime = (performance.now() - t1).toFixed(2);
+
+            const row = document.createElement('tr');
+            
+            // Highlight worst-case degradation in DQS (Sorted/Reverse)
+            const isDegraded = dComps > (N * N) / 4;
+            const dCompsClass = isDegraded ? 'highlight-red' : '';
+            const rCompsClass = 'highlight-green';
+
+            row.innerHTML = `
+                <td><strong>${caseName}</strong></td>
+                <td class="${dCompsClass}">${dComps.toLocaleString()}</td>
+                <td class="${dCompsClass}">${dTime} ms</td>
+                <td class="${rCompsClass}">${rComps.toLocaleString()}</td>
+                <td class="${rCompsClass}">${rTime} ms</td>
+            `;
+            tbody.appendChild(row);
+        }
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    window.onload = runBenchmark;
+</script>
+
+</body>
+</html>
