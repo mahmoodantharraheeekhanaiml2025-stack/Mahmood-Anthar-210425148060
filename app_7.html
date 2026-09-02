@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N-Queens Visualizer - DAA Experiment</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --primary: #2c3e50;
+            --accent: #27ae60;
+            --border-color: #dcdde1;
+            --board-light: #f0d9b5;
+            --board-dark: #b58863;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        input[type="number"] {
+            width: 60px;
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 18px;
+            font-size: 16px;
+            color: white;
+            background-color: var(--accent);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #219150;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: none;
+            font-weight: bold;
+            color: #7f8c8d;
+            cursor: pointer;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom: 3px solid var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .metrics {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #eef2f5;
+            border-radius: 6px;
+        }
+
+        .metric-box {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .board-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .chessboard {
+            display: grid;
+            border: 3px solid #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            user-select: none;
+        }
+
+        .cell.light { background-color: var(--board-light); }
+        .cell.dark { background-color: var(--board-dark); }
+
+        .pagination {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        pre {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>N-Queens Backtracking Solver</h1>
+
+    <div class="controls">
+        <label for="board-size">Board Size (N):</label>
+        <input type="number" id="board-size" value="4" min="1" max="10">
+        <button onclick="runSolver()">Solve</button>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('visualizer')">Visualizer</button>
+        <button class="tab-btn" onclick="switchTab('code')">Code & Reference</button>
+    </div>
+
+    <div id="visualizer" class="tab-content active">
+        <div class="metrics">
+            <div class="metric-box">
+                <div>Total Solutions</div>
+                <div class="metric-value" id="sol-count">0</div>
+            </div>
+            <div class="metric-box">
+                <div>Backtrack Counts</div>
+                <div class="metric-value" id="backtrack-count">0</div>
+            </div>
+        </div>
+
+        <div class="board-container">
+            <div id="chessboard" class="chessboard"></div>
+            
+            <div class="pagination" id="pagination-controls" style="display: none;">
+                <button id="prev-btn" onclick="changeSolution(-1)">Previous</button>
+                <span id="solution-index">Solution 1 of 1</span>
+                <button id="next-btn" onclick="changeSolution(1)">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="code" class="tab-content">
+        <h3>Python Implementation</h3>
+        <pre><code>def is_safe(board, row, col):
+    for prev_row in range(row):
+        placed = board[prev_row]
+        if placed == col:  # Same column
+            return False
+        if abs(prev_row - row) == abs(placed - col):  # Diagonal
+            return False
+    return True
+
+def solve_n_queens(n):
+    board = [-1] * n
+    solutions = []
+    backtrack_count = [0]
+
+    def backtrack(row):
+        if row == n:
+            solutions.append(board[:])
+            return
+        for col in range(n):
+            if is_safe(board, row, col):
+                board[row] = col
+                backtrack(row + 1)
+                board[row] = -1  # Undo
+                backtrack_count[0] += 1
+
+    backtrack(0)
+    return solutions, backtrack_count[0]</code></pre>
+    </div>
+</div>
+
+<script>
+    let currentSolutions = [];
+    let currentBacktracks = 0;
+    let currentIndex = 0;
+    let currentN = 4;
+
+    function isSafe(board, row, col) {
+        for (let prevRow = 0; prevRow < row; prevRow++) {
+            let placed = board[prevRow];
+            if (placed === col) return false;
+            if (Math.abs(prevRow - row) === Math.abs(placed - col)) return false;
+        }
+        return true;
+    }
+
+    function solveNQueens(n) {
+        let board = new Array(n).fill(-1);
+        let solutions = [];
+        let backtrackCount = 0;
+
+        function backtrack(row) {
+            if (row === n) {
+                solutions.push([...board]);
+                return;
+            }
+            for (let col = 0; col < n; col++) {
+                if (isSafe(board, row, col)) {
+                    board[row] = col;
+                    backtrack(row + 1);
+                    board[row] = -1;
+                    backtrackCount++;
+                }
+            }
+        }
+
+        backtrack(0);
+        return { solutions, backtracks: backtrackCount };
+    }
+
+    function renderBoard(solution, n) {
+        const boardEl = document.getElementById('chessboard');
+        boardEl.innerHTML = '';
+        boardEl.style.gridTemplateColumns = `repeat(${n}, 50px)`;
+        boardEl.style.gridTemplateRows = `repeat(${n}, 50px)`;
+
+        for (let row = 0; row < n; row++) {
+            for (let col = 0; col < n; col++) {
+                const cell = document.createElement('div');
+                const isLight = (row + col) % 2 === 0;
+                cell.className = `cell ${isLight ? 'light' : 'dark'}`;
+                
+                if (solution && solution[row] === col) {
+                    cell.innerHTML = '👑';
+                }
+                boardEl.appendChild(cell);
+            }
+        }
+    }
+
+    function runSolver() {
+        const nInput = document.getElementById('board-size');
+        currentN = parseInt(nInput.value) || 4;
+
+        const result = solveNQueens(currentN);
+        currentSolutions = result.solutions;
+        currentBacktracks = result.backtracks;
+        currentIndex = 0;
+
+        document.getElementById('sol-count').innerText = currentSolutions.length;
+        document.getElementById('backtrack-count').innerText = currentBacktracks;
+
+        const pagination = document.getElementById('pagination-controls');
+        if (currentSolutions.length > 0) {
+            pagination.style.display = 'flex';
+            updateDisplay();
+        } else {
+            pagination.style.display = 'none';
+            renderBoard(null, currentN);
+        }
+    }
+
+    function updateDisplay() {
+        renderBoard(currentSolutions[currentIndex], currentN);
+        document.getElementById('solution-index').innerText = 
+            `Solution ${currentIndex + 1} of ${currentSolutions.length}`;
+        
+        document.getElementById('prev-btn').disabled = currentIndex === 0;
+        document.getElementById('next-btn').disabled = currentIndex === currentSolutions.length - 1;
+    }
+
+    function changeSolution(direction) {
+        currentIndex += direction;
+        if (currentIndex < 0) currentIndex = 0;
+        if (currentIndex >= currentSolutions.length) currentIndex = currentSolutions.length - 1;
+        updateDisplay();
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    // Initial run on load
+    window.onload = runSolver;
+</script>
+
+</body>
+</html>
