@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Efficient Bin Packing - DAA Experiment</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.75);
+            --accent: #8b5cf6;
+            --accent-glow: rgba(139, 92, 246, 0.4);
+            --success: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --bin-bg: rgba(15, 23, 42, 0.9);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at top center, #2e1065 0%, var(--bg) 100%);
+            color: var(--text-main);
+            margin: 0;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: var(--accent);
+            margin-bottom: 8px;
+            text-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 25px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px 20px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+
+        #code.tab-content.active {
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        input[type="text"], input[type="number"] {
+            background: #1e293b;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        select {
+            background: #1e293b;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        button.run-btn {
+            padding: 9px 20px;
+            background: var(--accent);
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: opacity 0.2s;
+        }
+
+        button.run-btn:hover {
+            opacity: 0.9;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .metric-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .metric-card .val {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--accent);
+            margin-top: 5px;
+        }
+
+        /* Bins Visual Area */
+        .bins-container {
+            display: flex;
+            gap: 20px;
+            overflow-x: auto;
+            padding: 35px 15px 15px 15px;
+            min-height: 280px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            align-items: flex-end;
+        }
+
+        .bin {
+            width: 110px;
+            height: 250px;
+            background: var(--bin-bg);
+            border: 2px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            display: flex;
+            flex-direction: column-reverse;
+            position: relative;
+            padding: 4px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .bin-header {
+            position: absolute;
+            top: -28px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: bold;
+        }
+
+        .bin-fill-indicator {
+            position: absolute;
+            top: -15px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--success);
+            font-family: monospace;
+        }
+
+        .item-block {
+            width: 100%;
+            background: var(--accent);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: white;
+            box-sizing: border-box;
+            transition: all 0.3s;
+            margin-top: 1px;
+        }
+
+        pre {
+            background: #090d16;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Efficient Bin Packing Problem</h1>
+        <p class="subtitle">Approximation Algorithms Visualizer • DAA Experiment</p>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('visualizer')">Visualizer</button>
+        <button class="tab-btn" onclick="switchTab('code')">Python Source</button>
+    </div>
+
+    <div id="visualizer" class="tab-content active">
+        <div class="controls">
+            <div style="flex-grow: 1;">
+                <label>Item Weights (comma-separated):</label>
+                <input type="text" id="item-input" value="0.5, 0.7, 0.3, 0.9, 0.2, 0.6, 0.8, 0.4, 0.1, 0.5" style="width: 100%; margin-top: 5px;">
+            </div>
+            
+            <div>
+                <label>Capacity:</label><br>
+                <input type="number" id="capacity-input" value="1.0" step="0.1" min="0.1" style="width: 80px; margin-top: 5px;">
+            </div>
+
+            <div>
+                <label>Algorithm Strategy:</label><br>
+                <select id="algo-select" style="margin-top: 5px;">
+                    <option value="ff">First Fit (FF)</option>
+                    <option value="ffd">First Fit Decreasing (FFD)</option>
+                    <option value="bfd">Best Fit Decreasing (BFD)</option>
+                </select>
+            </div>
+
+            <div style="align-self: flex-end;">
+                <button class="run-btn" onclick="runBinPacking()">Execute Algorithm</button>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div>Lower Bound Bins</div>
+                <div class="val" id="lower-bound-val">0</div>
+            </div>
+            <div class="metric-card">
+                <div>Bins Used</div>
+                <div class="val" id="bin-count">0</div>
+            </div>
+            <div class="metric-card">
+                <div>Items Packed</div>
+                <div class="val" id="item-count">0</div>
+            </div>
+            <div class="metric-card">
+                <div>Space Efficiency</div>
+                <div class="val" id="efficiency-val">0%</div>
+            </div>
+        </div>
+
+        <div class="bins-container" id="bins-display">
+            <!-- Dynamic Bins Render Here -->
+        </div>
+    </div>
+
+    <!-- Code Tab -->
+    <div id="code" class="tab-content">
+        <h2>Python Reference Implementation</h2>
+        <pre><code>def first_fit(items, capacity=1.0):
+    bins = []  # Each bin stores remaining space
+    bin_contents = []
+    for item in items:
+        placed = False
+        for i, space in enumerate(bins):
+            if space >= item:
+                bins[i] -= item
+                bin_contents[i].append(item)
+                placed = True
+                break
+        if not placed:
+            bins.append(capacity - item)
+            bin_contents.append([item])
+    return bin_contents
+
+def first_fit_decreasing(items, capacity=1.0):
+    return first_fit(sorted(items, reverse=True), capacity)
+
+def best_fit_decreasing(items, capacity=1.0):
+    sorted_items = sorted(items, reverse=True)
+    bins = []
+    bin_contents = []
+    for item in sorted_items:
+        best_idx = -1
+        best_space = float('inf')
+        for i, space in enumerate(bins):
+            if space >= item and space - item < best_space:
+                best_space = space - item
+                best_idx = i
+        if best_idx >= 0:
+            bins[best_idx] -= item
+            bin_contents[best_idx].append(item)
+        else:
+            bins.append(capacity - item)
+            bin_contents.append([item])
+    return bin_contents
+
+# Test Inputs
+items = [0.5, 0.7, 0.3, 0.9, 0.2, 0.6, 0.8, 0.4, 0.1, 0.5]
+capacity = 1.0
+lower_bound = -(-sum(items) // capacity)
+
+print(f"Summary: Lower Bound={int(lower_bound)}")</code></pre>
+    </div>
+</div>
+
+<script>
+    const colors = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#06b6d4', '#6366f1', '#14b8a6', '#f43f5e'];
+
+    function firstFit(items, capacity) {
+        let binsSpace = [];
+        let binContents = [];
+
+        items.forEach(item => {
+            let placed = false;
+            for (let i = 0; i < binsSpace.length; i++) {
+                if (binsSpace[i] >= item - 1e-9) {
+                    binsSpace[i] -= item;
+                    binContents[i].push(item);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                binsSpace.push(capacity - item);
+                binContents.push([item]);
+            }
+        });
+        return binContents;
+    }
+
+    function bestFitDecreasing(items, capacity) {
+        let sortedItems = [...items].sort((a, b) => b - a);
+        let binsSpace = [];
+        let binContents = [];
+
+        sortedItems.forEach(item => {
+            let bestIdx = -1;
+            let bestSpace = Infinity;
+
+            for (let i = 0; i < binsSpace.length; i++) {
+                if (binsSpace[i] >= item - 1e-9 && (binsSpace[i] - item) < bestSpace) {
+                    bestSpace = binsSpace[i] - item;
+                    bestIdx = i;
+                }
+            }
+
+            if (bestIdx >= 0) {
+                binsSpace[bestIdx] -= item;
+                binContents[bestIdx].push(item);
+            } else {
+                binsSpace.push(capacity - item);
+                binContents.push([item]);
+            }
+        });
+        return binContents;
+    }
+
+    function runBinPacking() {
+        const itemInput = document.getElementById('item-input').value;
+        const capacity = parseFloat(document.getElementById('capacity-input').value) || 1.0;
+        const algo = document.getElementById('algo-select').value;
+
+        let items = itemInput.split(',')
+            .map(x => parseFloat(x.trim()))
+            .filter(x => !isNaN(x) && x > 0 && x <= capacity);
+
+        if (items.length === 0) {
+            alert('Please enter valid positive items <= capacity!');
+            return;
+        }
+
+        let binContents = [];
+        if (algo === 'ff') {
+            binContents = firstFit(items, capacity);
+        } else if (algo === 'ffd') {
+            const sortedItems = [...items].sort((a, b) => b - a);
+            binContents = firstFit(sortedItems, capacity);
+        } else if (algo === 'bfd') {
+            binContents = bestFitDecreasing(items, capacity);
+        }
+
+        // Lower bound calculation: ceiling(sum / capacity)
+        const totalSum = items.reduce((a, b) => a + b, 0);
+        const lowerBound = Math.ceil(totalSum / capacity);
+
+        renderResults(binContents, capacity, items.length, lowerBound, totalSum);
+    }
+
+    function renderResults(bins, capacity, itemCount, lowerBound, totalSum) {
+        document.getElementById('lower-bound-val').innerText = lowerBound;
+        document.getElementById('bin-count').innerText = bins.length;
+        document.getElementById('item-count').innerText = itemCount;
+
+        const totalCapacity = bins.length * capacity;
+        const efficiency = Math.round((totalSum / totalCapacity) * 100);
+        document.getElementById('efficiency-val').innerText = `${efficiency}%`;
+
+        const display = document.getElementById('bins-display');
+        display.innerHTML = '';
+
+        bins.forEach((binItems, idx) => {
+            const binEl = document.createElement('div');
+            binEl.className = 'bin';
+
+            const usedSpace = binItems.reduce((a, b) => a + b, 0);
+
+            const header = document.createElement('div');
+            header.className = 'bin-header';
+            header.innerText = `Bin ${idx + 1}`;
+            binEl.appendChild(header);
+
+            const indicator = document.createElement('div');
+            indicator.className = 'bin-fill-indicator';
+            indicator.innerText = `${usedSpace.toFixed(1)} / ${capacity}`;
+            binEl.appendChild(indicator);
+
+            binItems.forEach((item, itemIdx) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'item-block';
+                
+                const heightPercent = (item / capacity) * 100;
+                itemEl.style.height = `${heightPercent}%`;
+                itemEl.style.backgroundColor = colors[itemIdx % colors.length];
+                itemEl.innerText = item;
+
+                binEl.appendChild(itemEl);
+            });
+
+            display.appendChild(binEl);
+        });
+    }
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
+
+    window.onload = runBinPacking;
+</script>
+
+</body>
+</html>
